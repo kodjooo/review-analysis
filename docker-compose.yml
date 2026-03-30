@@ -1,0 +1,42 @@
+services:
+  app:
+    build:
+      context: .
+    container_name: review-analysis-app
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /app
+    volumes:
+      - .:/app
+      - review_analysis_data:/app/data
+    command: ["python", "-m", "app.main", "run"]
+
+  scheduler:
+    build:
+      context: .
+    container_name: review-analysis-scheduler
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /app
+    volumes:
+      - .:/app
+      - review_analysis_data:/app/data
+    command: ["python", "-m", "app.main", "schedule"]
+
+  tests:
+    build:
+      context: .
+    container_name: review-analysis-tests
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /app
+    volumes:
+      - .:/app
+      - review_analysis_data:/app/data
+    command: ["pytest", "-q"]
+
+volumes:
+  review_analysis_data:

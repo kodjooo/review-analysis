@@ -1,0 +1,10 @@
+.env
+.cursor/
+.DS_Store
+._*
+.pytest_cache/
+__pycache__/
+*.pyc
+data/*.sqlite3
+data/*.db
+playwright-report/

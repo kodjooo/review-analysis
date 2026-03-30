@@ -1,0 +1,11 @@
+[
+  {
+    "id": "sample_store_001",
+    "name": "Тестовая точка",
+    "type": "Винотека",
+    "address": "Краснодар, ул. Красная, 10",
+    "yandex_url": "https://yandex.com/maps/org/example/reviews/",
+    "twogis_url": "https://2gis.ru/krasnodar/firm/example/tab/reviews",
+    "is_active": false
+  }
+]
