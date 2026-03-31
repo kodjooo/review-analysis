@@ -1,6 +1,8 @@
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from bs4 import BeautifulSoup
+
 from app.adapters.twogis import TwoGisAdapter
 from app.adapters.yandex import YandexAdapter
 from app.core.config import Settings
@@ -11,8 +13,15 @@ def build_settings() -> Settings:
         config_path=Path("config/points.json"),
         database_path=Path("data/test.sqlite3"),
         review_fetch_limit=20,
+        review_sort_order="newest",
         report_stars_threshold=4,
         page_timeout_seconds=10,
+        playwright_headless=True,
+        playwright_slow_mo_ms=0,
+        playwright_save_screenshots=False,
+        playwright_wait_networkidle=True,
+        playwright_pause_before_sort_seconds=0,
+        playwright_save_sort_debug_steps=False,
         scheduler_poll_seconds=60,
         schedule_frequency="weekly",
         schedule_day="monday",
@@ -20,13 +29,8 @@ def build_settings() -> Settings:
         schedule_minute=0,
         timezone=ZoneInfo("Europe/Moscow"),
         log_level="INFO",
-        smtp_sender="",
-        smtp_recipients=[],
-        smtp_host="",
-        smtp_port=587,
-        smtp_use_tls=True,
-        smtp_username="",
-        smtp_password="",
+        google_spreadsheet_id="",
+        google_service_account_file=None,
         points=[],
     )
 
@@ -43,6 +47,155 @@ def test_yandex_adapter_parses_fixture(fixtures_dir: Path) -> None:
     assert reviews[1]["stars"] == 3
 
 
+def test_yandex_adapter_uses_embedded_state_fallback() -> None:
+    adapter = YandexAdapter(build_settings())
+    html = """
+    <html>
+      <body>
+        <script>
+          window.__STATE__ = {
+            "ratingData":{"ratingCount":54,"ratingValue":5,"reviewCount":42},
+            "reviews":[
+              {
+                "reviewId":"rev-1",
+                "author":{"name":"Мария"},
+                "text":"Очень понравилось",
+                "rating":5,
+                "updatedTime":"2026-03-31T09:00:00.000Z"
+              }
+            ],
+            "params":{"count":42}
+          };
+        </script>
+      </body>
+    </html>
+    """
+
+    review_count, rating, reviews = adapter.parse_html(html)
+
+    assert review_count == 42
+    assert rating == 5.0
+    assert len(reviews) == 1
+    assert reviews[0]["author_name"] == "Мария"
+
+
+def test_yandex_adapter_sorts_embedded_reviews_by_newest() -> None:
+    adapter = YandexAdapter(build_settings())
+    html = """
+    <html>
+      <body>
+        <script>
+          window.__STATE__ = {
+            "ratingData":{"ratingCount":54,"ratingValue":5,"reviewCount":42},
+            "reviews":[
+              {
+                "reviewId":"rev-old",
+                "author":{"name":"Старый"},
+                "text":"Старый отзыв",
+                "rating":5,
+                "updatedTime":"2026-03-01T09:00:00.000Z"
+              },
+              {
+                "reviewId":"rev-new",
+                "author":{"name":"Новый"},
+                "text":"Новый отзыв",
+                "rating":5,
+                "updatedTime":"2026-03-31T09:00:00.000Z"
+              }
+            ],
+            "params":{"count":42}
+          };
+        </script>
+      </body>
+    </html>
+    """
+
+    review_count, rating, reviews = adapter.parse_html(html)
+
+    assert review_count == 42
+    assert rating == 5.0
+    assert reviews[0]["external_id"] == "rev-new"
+    assert reviews[1]["external_id"] == "rev-old"
+
+
+def test_yandex_extract_float_ignores_review_count_suffix() -> None:
+    node = BeautifulSoup("<div>5,0 54 оценки</div>", "html.parser").div
+
+    assert node is not None
+    assert YandexAdapter._extract_float(node) == 5.0
+
+
+def test_yandex_prefers_review_count_over_rating_count() -> None:
+    adapter = YandexAdapter(build_settings())
+    html = """
+    <html>
+      <body>
+        <div class="business-summary-rating-badge-view__rating-count">54 оценки</div>
+        <div class="business-reviews-card-view__header">
+          <h2 class="card-section-header__title_wide">42 отзыва</h2>
+        </div>
+        <div class="business-rating-badge-view__rating-text">5,0 54 оценки</div>
+        <script>
+          window.__STATE__ = {
+            "ratingData":{"ratingCount":54,"ratingValue":5,"reviewCount":42},
+            "reviews":[
+              {
+                "reviewId":"rev-1",
+                "author":{"name":"Мария"},
+                "text":"Очень понравилось",
+                "rating":5,
+                "updatedTime":"2026-03-31T09:00:00.000Z"
+              }
+            ],
+            "params":{"count":42}
+          };
+        </script>
+      </body>
+    </html>
+    """
+
+    review_count, rating, reviews = adapter.parse_html(html)
+
+    assert review_count == 42
+    assert rating == 5.0
+    assert len(reviews) == 1
+
+
+def test_yandex_prefers_embedded_review_count_over_photo_tab_count() -> None:
+    adapter = YandexAdapter(build_settings())
+    html = """
+    <html>
+      <body>
+        <div class="business-tab_type_photo"><span class="business-tab__count">34</span></div>
+        <div class="business-reviews-card-view__header">
+          <h2 class="card-section-header__title_wide">34</h2>
+        </div>
+        <script>
+          window.__STATE__ = {
+            "ratingData":{"ratingCount":54,"ratingValue":5,"reviewCount":42},
+            "reviews":[
+              {
+                "reviewId":"rev-1",
+                "author":{"name":"Мария"},
+                "text":"Очень понравилось",
+                "rating":5,
+                "updatedTime":"2026-03-31T09:00:00.000Z"
+              }
+            ],
+            "params":{"offset":0,"limit":50,"count":42,"loadedReviewsCount":42}
+          };
+        </script>
+      </body>
+    </html>
+    """
+
+    review_count, rating, reviews = adapter.parse_html(html)
+
+    assert review_count == 42
+    assert rating == 5.0
+    assert len(reviews) == 1
+
+
 def test_twogis_adapter_parses_fixture(fixtures_dir: Path) -> None:
     adapter = TwoGisAdapter(build_settings())
     review_count, rating, reviews = adapter.parse_html(
@@ -53,3 +206,65 @@ def test_twogis_adapter_parses_fixture(fixtures_dir: Path) -> None:
     assert rating == 4.3
     assert len(reviews) == 2
     assert reviews[1]["author_name"] == "Анна"
+
+
+def test_twogis_adapter_uses_api_reviews_by_default() -> None:
+    adapter = TwoGisAdapter(build_settings())
+    adapter._fetch_reviews_from_api = lambda html, source_url: [  # type: ignore[method-assign]
+        {
+            "external_id": "218320611",
+            "author_name": "Ирина",
+            "published_at": "2026-02-10T21:01:46.732943+07:00",
+            "text": "Отличный выбор",
+            "source_url": "https://2gis.ru/review/218320611",
+            "stars": 5,
+        }
+    ]
+
+    html = """
+    <html>
+      <head>
+        <meta
+          name="description"
+          content="18 отзывов о Культура крепкого, винотека. Рейтинг 5 на основе 19 оценок."
+        />
+      </head>
+      <body>
+        <div data-review-id="dom-1">
+          <div class="Name">DOM Автор</div>
+          <time>2025-01-01</time>
+          <div class="Comment">DOM отзыв</div>
+        </div>
+        <a href="/krasnodar/firm/70000001104623156/tab/reviews">
+          <span>Отзывы</span>
+          <span>18</span>
+        </a>
+        <div class="_1tam240">5</div>
+      </body>
+    </html>
+    """
+
+    review_count, rating, reviews = adapter.parse_html(
+        html,
+        source_url="https://2gis.ru/krasnodar/firm/70000001104623156/tab/reviews",
+    )
+
+    assert review_count == 18
+    assert rating == 5.0
+    assert len(reviews) == 1
+    assert reviews[0]["external_id"] == "218320611"
+    assert reviews[0]["author_name"] == "Ирина"
+
+
+def test_twogis_adapter_sets_unknown_author_placeholder_when_name_missing() -> None:
+    review = TwoGisAdapter._normalize_api_review(
+        {
+            "id": "218320611",
+            "user": {},
+            "date_created": "2026-02-10T21:01:46.732943+07:00",
+            "text": "Понравилась работа кавистов.",
+            "rating": 5,
+        }
+    )
+
+    assert review["author_name"] == "Имя не определено"

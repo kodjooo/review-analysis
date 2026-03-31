@@ -80,7 +80,12 @@ class MonitoringRunResult:
 
 
 @dataclass(slots=True)
-class EmailMessage:
-    subject: str
-    html: str
-    plain_text: str
+class SheetTab:
+    title: str
+    rows: list[list[str]]
+
+
+@dataclass(slots=True)
+class SheetsReport:
+    spreadsheet_title: str
+    sheets: list[SheetTab]

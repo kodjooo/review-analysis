@@ -1,11 +1,722 @@
 [
-  {
-    "id": "sample_store_001",
-    "name": "Тестовая точка",
-    "type": "Винотека",
-    "address": "Краснодар, ул. Красная, 10",
-    "yandex_url": "https://yandex.com/maps/org/example/reviews/",
-    "twogis_url": "https://2gis.ru/krasnodar/firm/example/tab/reviews",
-    "is_active": false
-  }
+    {
+        "id":  "1",
+        "name":  "Точка 1",
+        "type":  "Мильстрим",
+        "address":  "Димитровград, ул. Свирская, 20",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/64380142109/reviews/",
+        "twogis_url":  "https://2gis.ru/dimitrovgrad/firm/70000001053489226/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "2",
+        "name":  "Точка 2",
+        "type":  "Мильстрим",
+        "address":  "Пенза, ул. Окружная, д. 27В",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/124642704605/reviews/",
+        "twogis_url":  "https://2gis.ru/penza/firm/70000001110529374/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "3",
+        "name":  "Точка 3",
+        "type":  "Мильстрим",
+        "address":  "Тула, пр-кт Ленина, 110",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/75886890421/reviews/",
+        "twogis_url":  "https://2gis.ru/tula/firm/70000001072019279/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "4",
+        "name":  "Точка 4",
+        "type":  "Мильстрим",
+        "address":  "Иваново, ул. Кудряшова, 78А",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/115964808665/reviews/",
+        "twogis_url":  "https://2gis.ru/ivanovo/firm/70000001036481350/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "5",
+        "name":  "Точка 5",
+        "type":  "Мильстрим",
+        "address":  "Кострома, ул. Профсоюзная, 25Б",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/171877118324/reviews/",
+        "twogis_url":  "https://2gis.ru/kostroma/firm/70000001039706700/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "6",
+        "name":  "Точка 6",
+        "type":  "Мильстрим",
+        "address":  "Иваново, ул. Громобоя, 15",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/27833850389/reviews/",
+        "twogis_url":  "https://2gis.ru/ivanovo/firm/70000001035106300/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "7",
+        "name":  "Точка 7",
+        "type":  "Мильстрим",
+        "address":  "Пенза, ул Калинина, влд. 116",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/231439951839/reviews/",
+        "twogis_url":  "https://2gis.ru/penza/firm/70000001066570649/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "8",
+        "name":  "Точка 8",
+        "type":  "Мильстрим",
+        "address":  "Воронеж, ул. Ленина, 43",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/110585357194/reviews/",
+        "twogis_url":  "https://2gis.ru/voronezh/firm/70000001081997501/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "9",
+        "name":  "Точка 9",
+        "type":  "Мильстрим",
+        "address":  "Орёл, пер. Новосильский, 4/11",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/119672193970/reviews/",
+        "twogis_url":  "https://2gis.ru/orel/firm/70000001044832569/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "10",
+        "name":  "Точка 10",
+        "type":  "Мильстрим",
+        "address":  "Брянск, ул. Литейная, 5",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/124082361475/reviews/",
+        "twogis_url":  "https://2gis.ru/bryansk/firm/70000001057175878/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "11",
+        "name":  "Точка 11",
+        "type":  "Мильстрим",
+        "address":  "Санкт-Петербург, ул. Парашютная, 79, к1, ст1",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/180829016515/reviews/",
+        "twogis_url":  "https://2gis.ru/spb/firm/70000001087604941/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "12",
+        "name":  "Точка 12",
+        "type":  "Мильстрим",
+        "address":  "Орёл, ул. Раздольная, 80",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/112737625466/reviews/",
+        "twogis_url":  "https://2gis.ru/orel/firm/70000001035480157/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "13",
+        "name":  "Точка 13",
+        "type":  "Мильстрим",
+        "address":  "Санкт-Петербург, ул. Декабристов, 41",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/213689094235/reviews/",
+        "twogis_url":  "https://2gis.ru/spb/firm/70000001040721113/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "14",
+        "name":  "Точка 14",
+        "type":  "Мильстрим",
+        "address":  "Ульяновск, ул. К. Маркса, 13А к.3",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/59736075864/reviews/",
+        "twogis_url":  "https://2gis.ru/ulyanovsk/firm/70000001100546322/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "15",
+        "name":  "Точка 15",
+        "type":  "Мильстрим",
+        "address":  "Старый Оскол, пер. Николаевский, 1",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/88448395198/reviews/",
+        "twogis_url":  "https://2gis.ru/staroskol/firm/70000001034333519/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "16",
+        "name":  "Точка 16",
+        "type":  "Мильстрим",
+        "address":  "Саратов, ул. Тархова, 25Б",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/160192229320/reviews/",
+        "twogis_url":  "https://2gis.ru/saratov/firm/70000001102922218/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "17",
+        "name":  "Точка 17",
+        "type":  "Мильстрим",
+        "address":  "Рязань, ул. Чапаева, 56",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/95225737580/reviews/",
+        "twogis_url":  "https://2gis.ru/ryazan/firm/70000001041883226/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "18",
+        "name":  "Точка 18",
+        "type":  "Винотека Мильстрим",
+        "address":  "Белгород, ул. Корочанская, 416",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/58746868816/reviews/",
+        "twogis_url":  "https://2gis.ru/belgorod/firm/70000001032331628/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "19",
+        "name":  "Точка 19",
+        "type":  "Мильстрим",
+        "address":  "Белгород, ул. Чичерина, 1Л",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/114092338561/reviews/",
+        "twogis_url":  "https://2gis.ru/belgorod/firm/70000001084040004/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "20",
+        "name":  "Точка 20",
+        "type":  "Мильстрим",
+        "address":  "Тамбов, СНТ Ревтруд, 1",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/76861447494/reviews/",
+        "twogis_url":  "https://2gis.ru/tambov/firm/70000001044572039/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "21",
+        "name":  "Точка 21",
+        "type":  "Мильстрим",
+        "address":  "Рязань, ул. Новосёлов, 37",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/127922266093/reviews/",
+        "twogis_url":  "https://2gis.ru/ryazan/firm/70000001089116856/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "22",
+        "name":  "Точка 22",
+        "type":  "Мильстрим",
+        "address":  "Санкт-Петербург, Проспект Просвещения, 80, к3",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/87949070474/reviews/",
+        "twogis_url":  "https://2gis.ru/spb/firm/70000001030720391/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "23",
+        "name":  "Точка 23",
+        "type":  "Мильстрим",
+        "address":  "Дубна, пр-т Боголюбова, 20, помещ.171",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/79695349493/reviews/",
+        "twogis_url":  "https://2gis.ru/dubna/firm/70000001040319118/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "24",
+        "name":  "Точка 24",
+        "type":  "Мильстрим",
+        "address":  "Тула, ул. Кирова, 25Б",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/100646955533/reviews/",
+        "twogis_url":  "https://2gis.ru/tula/firm/70000001032411103/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "25",
+        "name":  "Точка 25",
+        "type":  "Мильстрим",
+        "address":  "Смоленск, проезд Трамвайный, 6",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/124056786634/reviews/",
+        "twogis_url":  "https://2gis.ru/smolensk/firm/70000001050307610/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "26",
+        "name":  "Точка 26",
+        "type":  "Мильстрим",
+        "address":  "Белгород, ул. Сумская, 70В",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/22321941172/reviews/",
+        "twogis_url":  "https://2gis.ru/belgorod/firm/70000001043666815/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "27",
+        "name":  "Точка 27",
+        "type":  "Мильстрим",
+        "address":  "Санкт-Петербург, ул. Ильюшина, 1, к1",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/186425151949/reviews/",
+        "twogis_url":  "https://2gis.ru/spb/firm/70000001033396966/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "28",
+        "name":  "Точка 28",
+        "type":  "Мильстрим",
+        "address":  "Курск, ул. Малых, 1",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/25300467153/reviews/",
+        "twogis_url":  "https://2gis.ru/kursk/firm/70000001039369469/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "29",
+        "name":  "Точка 29",
+        "type":  "Мильстрим",
+        "address":  "Белореченск, ул. Толстого, 86А",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/78652157613/reviews/",
+        "twogis_url":  "https://2gis.ru/belorechensk/firm/70000001039203881/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "30",
+        "name":  "Точка 30",
+        "type":  "Мильстрим",
+        "address":  "Луховицы, ул. Пушкина, 10",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/137655911883/reviews/",
+        "twogis_url":  "https://2gis.ru/luhovicy/firm/70000001043522349/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "31",
+        "name":  "Точка 31",
+        "type":  "Мильстрим",
+        "address":  "Санкт-Петербург, пр-т Кондратьевский, 51 к.1",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/199591304930/reviews/",
+        "twogis_url":  "https://2gis.ru/spb/firm/70000001040111393/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "32",
+        "name":  "Точка 32",
+        "type":  "Мильстрим",
+        "address":  "Брянск, ул. Пересвета, 2А",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/158941541417/reviews/",
+        "twogis_url":  "https://2gis.ru/bryansk/firm/70000001035447310/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "33",
+        "name":  "Точка 33",
+        "type":  "Мильстрим",
+        "address":  "Омск, проспект Мира, 21",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/11497254132/reviews/",
+        "twogis_url":  "https://2gis.ru/omsk/firm/70000001068054242/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "34",
+        "name":  "Точка 34",
+        "type":  "Мильстрим",
+        "address":  "Белгород, п. Репное, мкр.Успешный, ул. Попутная, 15А",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/105897241790/reviews/",
+        "twogis_url":  "https://2gis.ru/belgorod/firm/70000001040821925/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "35",
+        "name":  "Точка 35",
+        "type":  "Мильстрим",
+        "address":  "Тула, ул. Фрунзе, 6",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/204980862166/reviews/",
+        "twogis_url":  "https://2gis.ru/tula/firm/70000001036396410/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "36",
+        "name":  "Точка 36",
+        "type":  "Мильстрим",
+        "address":  "Брянск, пр-кт Станке Димитрова, 77Б",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/18937976104/reviews/",
+        "twogis_url":  "https://2gis.ru/bryansk/firm/70000001067644024/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "37",
+        "name":  "Точка 37",
+        "type":  "Мильстрим",
+        "address":  "Санкт-Петербург, Лахтинский проспект, 85, к2 ТЦ \"Новая Аура\"",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/24297011299/reviews/",
+        "twogis_url":  "https://2gis.ru/spb/firm/70000001033874513/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "38",
+        "name":  "Точка 38",
+        "type":  "Мильстрим",
+        "address":  "Губкин, ул. Фрунзе, 12",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/177106368103/reviews/",
+        "twogis_url":  "https://2gis.ru/gubkin/firm/70000001046108180/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "39",
+        "name":  "Точка 39",
+        "type":  "Мильстрим",
+        "address":  "Белгород, ул. Есенина, 9 кор.1",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/150846716503/reviews/",
+        "twogis_url":  "https://2gis.ru/belgorod/firm/70000001100776122/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "40",
+        "name":  "Точка 40",
+        "type":  "Мильстрим",
+        "address":  "Волгоград, бульвар им. Энгельса, 28Б, пом. 7",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/36982446912/reviews/",
+        "twogis_url":  "https://2gis.ru/volgograd/firm/70000001084269634/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "41",
+        "name":  "Точка 41",
+        "type":  "Мильстрим",
+        "address":  "Омск, проспект Комарова, 13В",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/57423482773/reviews/",
+        "twogis_url":  "https://2gis.ru/omsk/firm/70000001093448299/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "42",
+        "name":  "Точка 42",
+        "type":  "Мильстрим",
+        "address":  "Омск, ул. Лобкова, 6/1",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/204936957646/reviews/",
+        "twogis_url":  "https://2gis.ru/omsk/firm/70000001068728330/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "43",
+        "name":  "Точка 43",
+        "type":  "Мильстрим",
+        "address":  "Тула, ул. Октябрьская, 25",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/160843961482/reviews/",
+        "twogis_url":  "https://2gis.ru/tula/firm/70000001034157403/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "44",
+        "name":  "Точка 44",
+        "type":  "Мильстрим",
+        "address":  "Брянск, ул. Дуки, 47/1",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/106910790424/reviews/",
+        "twogis_url":  "https://2gis.ru/bryansk/firm/70000001039904593/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "45",
+        "name":  "Точка 45",
+        "type":  "Мильстрим",
+        "address":  "Армавир, ул. Новороссийская, 90Б",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/76827259169/reviews/",
+        "twogis_url":  "https://2gis.ru/armawir/firm/70000001027892121/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "46",
+        "name":  "Точка 46",
+        "type":  "Мильстрим",
+        "address":  "Белгород, Бульвар Юности, 5Б",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/191553719644/reviews/",
+        "twogis_url":  "https://2gis.ru/belgorod/firm/70000001045121897/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "47",
+        "name":  "Точка 47",
+        "type":  "Мильстрим",
+        "address":  "Курск, ул. К.Маркса, 60",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/160580278074/reviews/",
+        "twogis_url":  "https://2gis.ru/kursk/firm/70000001048025399/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "48",
+        "name":  "Точка 48",
+        "type":  "Мильстрим",
+        "address":  "Старый Оскол, ул. Майская, 16 А",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/5616228745/reviews/",
+        "twogis_url":  "https://2gis.ru/staroskol/firm/70000001069127108/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "49",
+        "name":  "Точка 49",
+        "type":  "Винотека Мильстрим",
+        "address":  "Курск, пр-кт Ленинского Комсомола, 1В",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/51276334310/reviews/",
+        "twogis_url":  "https://2gis.ru/kursk/firm/70000001043564058/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "50",
+        "name":  "Точка 50",
+        "type":  "Мильстрим",
+        "address":  "Белгород, птг. Северный, ул. Октябрьская, 139Б",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/157031808277/reviews/",
+        "twogis_url":  "https://2gis.ru/belgorod/firm/70000001036508096/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "51",
+        "name":  "Точка 51",
+        "type":  "Мильстрим",
+        "address":  "Санкт-Петербург, Выборгское шоссе, 369 кб",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/208939766954/reviews/",
+        "twogis_url":  "https://2gis.ru/spb/firm/70000001030750115/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "52",
+        "name":  "Точка 52",
+        "type":  "Мильстрим",
+        "address":  "Сочи, ул. Транспортная, 11А",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/6453731898/reviews/",
+        "twogis_url":  "https://2gis.ru/sochi/firm/70000001044097495/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "53",
+        "name":  "Точка 53",
+        "type":  "Мильстрим",
+        "address":  "Тюмень,ул. Малыгина, 49,",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/164450162328/reviews/",
+        "twogis_url":  "https://2gis.ru/tyumen/firm/70000001104020532/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "54",
+        "name":  "Точка 54",
+        "type":  "Мильстрим",
+        "address":  "Тамбов, ул. Рылеева, 89В",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/229025009633/reviews/",
+        "twogis_url":  "https://2gis.ru/tambov/firm/70000001096263201/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "55",
+        "name":  "Точка 55",
+        "type":  "Мильстрим",
+        "address":  "Старый Оскол, просп. Молодежный, 12А",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/11314093446/reviews/",
+        "twogis_url":  "https://2gis.ru/staroskol/firm/70000001059095578/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "56",
+        "name":  "Точка 56",
+        "type":  "Мильстрим",
+        "address":  "Тамбов, ул. Октябрьская, 16",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/169258245610/reviews/",
+        "twogis_url":  "https://2gis.ru/tambov/firm/70000001096263053/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "57",
+        "name":  "Точка 57",
+        "type":  "Мильстрим",
+        "address":  "Белгород, ул. Победы, 126",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/131953016300/reviews/",
+        "twogis_url":  "https://2gis.ru/belgorod/firm/70000001102758896/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "58",
+        "name":  "Точка 58",
+        "type":  "Мильстрим",
+        "address":  "Краснодар, ул. Калинина, 1/16",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/210971894375/reviews/",
+        "twogis_url":  "https://2gis.ru/krasnodar/firm/70000001033395135/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "59",
+        "name":  "Точка 59",
+        "type":  "Мильстрим",
+        "address":  "Липецк, ул. Гагарина, 79",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/43661086852/reviews/",
+        "twogis_url":  "https://2gis.ru/lipetsk/firm/70000001042941170/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "60",
+        "name":  "Точка 60",
+        "type":  "Мильстрим",
+        "address":  "Орёл, ул. Тургенева, 37",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/235986666675/reviews/",
+        "twogis_url":  "https://2gis.ru/orel/firm/70000001074443086/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "61",
+        "name":  "Точка 61",
+        "type":  "Мильстрим",
+        "address":  "Липецк, ул. Леонтия Кривенкова, 8",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/148068748389/reviews/",
+        "twogis_url":  "https://2gis.ru/lipetsk/firm/70000001062516544/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "62",
+        "name":  "Точка 62",
+        "type":  "Мильстрим",
+        "address":  "Рязань, Ряжское шоссе, 30",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/173662149057/reviews/",
+        "twogis_url":  "https://2gis.ru/ryazan/firm/70000001080304389/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "63",
+        "name":  "Точка 63",
+        "type":  "Мильстрим",
+        "address":  "Тюмень, ул. Станислава Карнацевича, 14",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/146483655663/reviews/",
+        "twogis_url":  "https://2gis.ru/tyumen/firm/70000001047161397/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "64",
+        "name":  "Точка 64",
+        "type":  "Мильстрим",
+        "address":  "Ульяновск, Московское ш., 91",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/104831335054/reviews/",
+        "twogis_url":  "https://2gis.ru/ulyanovsk/firm/70000001055894718/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "65",
+        "name":  "Точка 65",
+        "type":  "Мильстрим",
+        "address":  "Старый Оскол, ул. Хмелева, 63/1",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/94996258021/reviews/",
+        "twogis_url":  "https://2gis.ru/staroskol/firm/70000001036508886/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "66",
+        "name":  "Точка 66",
+        "type":  "Мильстрим",
+        "address":  "Белгород, пгт Разумное, пр-кт Ленина, 1А",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/96613966860/reviews/",
+        "twogis_url":  "https://2gis.ru/belgorod/firm/70000001040431420/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "67",
+        "name":  "Точка 67",
+        "type":  "Мильстрим",
+        "address":  "Курск, ул. К.Маркса, 133А",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/213886065400/reviews/",
+        "twogis_url":  "https://2gis.ru/kursk/firm/70000001041648586/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "68",
+        "name":  "Точка 68",
+        "type":  "Мильстрим",
+        "address":  "Санкт-Петербург, Комендантский пр-кт, 62",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/205244689078/reviews/",
+        "twogis_url":  "https://2gis.ru/spb/firm/70000001042533752/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "69",
+        "name":  "Точка 69",
+        "type":  "Мильстрим",
+        "address":  "Белгород, ул. Губкина, 5Б",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/242150932766/reviews/",
+        "twogis_url":  "https://2gis.ru/belgorod/firm/70000001037286057/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "70",
+        "name":  "Точка 70",
+        "type":  "Мильстрим",
+        "address":  "Ульяновск, пр-кт, Ленинского Комсомола, 34, ТЦ Плаза",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/47164560795/reviews/",
+        "twogis_url":  "https://2gis.ru/ulyanovsk/firm/70000001046555560/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "71",
+        "name":  "Точка 71",
+        "type":  "Мильстрим",
+        "address":  "Строитель, ул. Жукова, 6",
+        "yandex_url":  "https://yandex.ru/maps/org/milstrim/204796786556/reviews/",
+        "twogis_url":  "https://2gis.ru/stroitel/firm/70000001067968923/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "72",
+        "name":  "Точка 72",
+        "type":  "Культура крепкого",
+        "address":  "Ульяновск, ул. Дворцовая, 4А/1",
+        "yandex_url":  "https://yandex.ru/maps/org/vinoteka_kultura_krepkogo/234717537678/reviews/",
+        "twogis_url":  "https://2gis.ru/ulyanovsk/firm/70000001089348074/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "73",
+        "name":  "Точка 73",
+        "type":  "Культура крепкого",
+        "address":  "Орел, ул. 8 Марта, 8 пом.226",
+        "yandex_url":  "https://yandex.ru/maps/org/vinoteka/118247995582/reviews/",
+        "twogis_url":  "https://2gis.ru/orel/firm/70000001062537352/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "74",
+        "name":  "Точка 74",
+        "type":  "Культура крепкого",
+        "address":  "Старый Оскол, мкр. Уютный, 4",
+        "yandex_url":  "https://yandex.ru/maps/org/vinoteka_kultura_krepkogo/20415534942/reviews/",
+        "twogis_url":  "https://2gis.ru/staroskol/firm/70000001081329535/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "75",
+        "name":  "Точка 75",
+        "type":  "Культура крепкого",
+        "address":  "Белгород, Чичерина, 1Л",
+        "yandex_url":  "https://yandex.ru/maps/org/vinoteka_kultura_krepkogo/196762430756/reviews/",
+        "twogis_url":  "https://2gis.ru/belgorod/firm/70000001109597138/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "76",
+        "name":  "Точка 76",
+        "type":  "Культура крепкого",
+        "address":  "Ульяновск, проспект Ленинского Комсомола, 34",
+        "yandex_url":  "https://yandex.ru/maps/org/vinoteka_kultura_krepkogo/233465382688/reviews/",
+        "twogis_url":  "https://2gis.ru/ulyanovsk/firm/70000001080306956/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "77",
+        "name":  "Точка 77",
+        "type":  "Культура крепкого",
+        "address":  "Белгород, Гражданский проспект, 34",
+        "yandex_url":  "https://yandex.ru/maps/org/vinoteka_kultura_krepkogo/44578391316/reviews/",
+        "twogis_url":  "https://2gis.ru/belgorod/firm/70000001090001227/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "78",
+        "name":  "Точка 78",
+        "type":  "Культура крепкого",
+        "address":  "Старый Оскол, мкр. Жукова, 48",
+        "yandex_url":  "https://yandex.ru/maps/org/vinoteka_kultura_krepkogo/195320279656/reviews/",
+        "twogis_url":  "https://2gis.ru/staroskol/firm/70000001078509617/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "79",
+        "name":  "Точка 79",
+        "type":  "Культура крепкого",
+        "address":  "Белгород, ул. Есенина, 9 кор.2",
+        "yandex_url":  "https://yandex.ru/maps/org/vinoteka_kultura_krepkogo/146485050438/reviews/",
+        "twogis_url":  "https://2gis.ru/belgorod/firm/70000001060157925/tab/reviews",
+        "is_active":  true
+    },
+    {
+        "id":  "80",
+        "name":  "Точка 80",
+        "type":  "Культура крепкого",
+        "address":  "Краснодар, ул. Казбеская, 1",
+        "yandex_url":  "https://yandex.ru/maps/org/vinoteka_kultura_krepkogo/147946479764/reviews/",
+        "twogis_url":  "https://2gis.ru/krasnodar/inside/3237597887447611/firm/70000001104623156/tab/reviews",
+        "is_active":  true
+    }
 ]

@@ -1,82 +1,101 @@
 from __future__ import annotations
 
-from html import escape
-
-from app.core.models import EmailMessage, MonitoringRunResult, PlatformName, PlatformStatus
+from app.core.models import MonitoringRunResult, PlatformName, SheetTab, SheetsReport
 
 
 class ReportBuilder:
     def __init__(self, stars_threshold: int) -> None:
         self.stars_threshold = stars_threshold
 
-    def build(self, result: MonitoringRunResult) -> EmailMessage:
-        subject = (
-            f"Мониторинг отзывов за период — "
-            f"{result.run_finished_at.strftime('%Y-%m-%d %H:%M')}"
-        )
-        return EmailMessage(
-            subject=subject,
-            html=self._build_html(result),
-            plain_text=self._build_text(result),
+    def build(self, result: MonitoringRunResult) -> SheetsReport:
+        title = f"Мониторинг отзывов {result.run_finished_at.strftime('%Y-%m-%d %H:%M')}"
+        return SheetsReport(
+            spreadsheet_title=title,
+            sheets=[
+                self._build_meta_sheet(result),
+                self._build_summary_sheet(result),
+                self._build_low_rated_sheet(result),
+            ],
         )
 
-    def _build_html(self, result: MonitoringRunResult) -> str:
-        summary_rows: list[str] = []
-        low_rated_rows: list[str] = []
+    def _build_meta_sheet(self, result: MonitoringRunResult) -> SheetTab:
+        return SheetTab(
+            title="run_info",
+            rows=[
+                ["Параметр", "Значение"],
+                ["Начало запуска", result.run_started_at.strftime("%Y-%m-%d %H:%M:%S")],
+                ["Завершение запуска", result.run_finished_at.strftime("%Y-%m-%d %H:%M:%S")],
+                ["Порог звезд", str(self.stars_threshold)],
+                ["Количество точек в отчете", str(len(result.point_reports))],
+            ],
+        )
 
+    def _build_summary_sheet(self, result: MonitoringRunResult) -> SheetTab:
+        rows: list[list[str]] = [[
+            "Тип магазина",
+            "Адрес",
+            "Площадка",
+            "Было отзывов",
+            "Стало отзывов",
+            "Новых",
+            "Рейтинг был",
+            "Рейтинг стал",
+            "Ссылка",
+            "Статус",
+            "Ошибка",
+        ]]
         for point_report in result.point_reports:
             for platform in (PlatformName.YANDEX, PlatformName.TWOGIS):
                 delta = point_report.deltas.get(platform)
                 if delta is None:
                     continue
-                summary_rows.append(
-                    "<tr>"
-                    f"<td>{escape(point_report.point.type)}</td>"
-                    f"<td>{escape(point_report.point.address)}</td>"
-                    f"<td>{escape(platform.value)}</td>"
-                    f"<td>{self._format_value(delta.previous_review_count)}</td>"
-                    f"<td>{self._format_value(delta.current_review_count)}</td>"
-                    f"<td>{len(delta.new_reviews)}</td>"
-                    f"<td>{self._format_value(delta.previous_rating)}</td>"
-                    f"<td>{self._format_value(delta.current_rating)}</td>"
-                    f"<td><a href=\"{escape(self._get_platform_url(point_report, platform))}\">ссылка</a></td>"
-                    f"<td>{escape(delta.error_message or delta.status.value)}</td>"
-                    "</tr>"
+                rows.append(
+                    [
+                        point_report.point.type,
+                        point_report.point.address,
+                        self._display_platform_name(platform),
+                        self._format_value(delta.previous_review_count),
+                        self._format_value(delta.current_review_count),
+                        str(len(delta.new_reviews)),
+                        self._format_value(delta.previous_rating),
+                        self._format_value(delta.current_rating),
+                        self._get_platform_url(point_report, platform),
+                        delta.status.value,
+                        delta.error_message or "",
+                    ]
                 )
+        return SheetTab(title="summary", rows=rows)
+
+    def _build_low_rated_sheet(self, result: MonitoringRunResult) -> SheetTab:
+        rows: list[list[str]] = [[
+            "Тип магазина",
+            "Адрес",
+            "Площадка",
+            "Дата",
+            "Звезды",
+            "Текст",
+            "Ссылка",
+        ]]
+        for point_report in result.point_reports:
+            for platform in (PlatformName.YANDEX, PlatformName.TWOGIS):
+                delta = point_report.deltas.get(platform)
+                if delta is None:
+                    continue
                 for review in delta.low_rated_new_reviews:
-                    low_rated_rows.append(
-                        "<tr>"
-                        f"<td>{escape(point_report.point.type)}</td>"
-                        f"<td>{escape(point_report.point.address)}</td>"
-                        f"<td>{escape(platform.value)}</td>"
-                        f"<td>{escape(review.published_at)}</td>"
-                        f"<td>{review.stars}</td>"
-                        f"<td>{escape(review.text)}</td>"
-                        f"<td><a href=\"{escape(review.source_url)}\">ссылка</a></td>"
-                        "</tr>"
+                    rows.append(
+                        [
+                            point_report.point.type,
+                            point_report.point.address,
+                            self._display_platform_name(platform),
+                            review.published_at,
+                            str(review.stars),
+                            review.text,
+                            review.source_url,
+                        ]
                     )
+        return SheetTab(title="low_rated_new_reviews", rows=rows)
 
-        return (
-            "<html><body>"
-            "<h1>Мониторинг отзывов</h1>"
-            f"<p>Дата завершения: {result.run_finished_at.strftime('%Y-%m-%d %H:%M:%S')}</p>"
-            "<h2>Сводка</h2>"
-            "<table border='1' cellpadding='6' cellspacing='0'>"
-            "<thead><tr><th>Тип магазина</th><th>Адрес</th><th>Площадка</th>"
-            "<th>Было отзывов</th><th>Стало отзывов</th><th>Новых</th>"
-            "<th>Рейтинг был</th><th>Рейтинг стал</th><th>Ссылка</th><th>Статус</th></tr></thead>"
-            f"<tbody>{''.join(summary_rows) or '<tr><td colspan=\"10\">Нет данных</td></tr>'}</tbody>"
-            "</table>"
-            f"<h2>Новые отзывы со звездами не выше {self.stars_threshold}</h2>"
-            "<table border='1' cellpadding='6' cellspacing='0'>"
-            "<thead><tr><th>Тип магазина</th><th>Адрес</th><th>Площадка</th>"
-            "<th>Дата</th><th>Звезды</th><th>Текст</th><th>Ссылка</th></tr></thead>"
-            f"<tbody>{''.join(low_rated_rows) or '<tr><td colspan=\"7\">Нет новых отзывов ниже порога</td></tr>'}</tbody>"
-            "</table>"
-            "</body></html>"
-        )
-
-    def _build_text(self, result: MonitoringRunResult) -> str:
+    def build_text(self, result: MonitoringRunResult) -> str:
         lines = ["Мониторинг отзывов", ""]
         for point_report in result.point_reports:
             lines.append(f"{point_report.point.type}, {point_report.point.address}")
@@ -85,7 +104,7 @@ class ReportBuilder:
                 if delta is None:
                     continue
                 lines.append(
-                    f"{platform.value}: было={self._format_value(delta.previous_review_count)}, "
+                    f"{self._display_platform_name(platform)}: было={self._format_value(delta.previous_review_count)}, "
                     f"стало={self._format_value(delta.current_review_count)}, "
                     f"новых={len(delta.new_reviews)}, "
                     f"рейтинг был={self._format_value(delta.previous_rating)}, "
@@ -95,10 +114,6 @@ class ReportBuilder:
                 )
                 if delta.error_message:
                     lines.append(f"Ошибка: {delta.error_message}")
-                for review in delta.low_rated_new_reviews:
-                    lines.append(
-                        f"Новый отзыв: {review.published_at} | {review.stars} | {review.text}"
-                    )
             lines.append("")
         return "\n".join(lines).strip()
 
@@ -113,3 +128,7 @@ class ReportBuilder:
             if platform == PlatformName.YANDEX
             else point_report.point.twogis_url
         )
+
+    @staticmethod
+    def _display_platform_name(platform: PlatformName) -> str:
+        return "2gis" if platform == PlatformName.TWOGIS else platform.value

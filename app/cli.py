@@ -11,7 +11,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "command",
-        choices=["run", "schedule", "test-email", "init-db"],
+        choices=["run", "schedule", "test-output", "init-db"],
         nargs="?",
         default="run",
         help="Команда запуска приложения.",

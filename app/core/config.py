@@ -14,8 +14,15 @@ class Settings:
     config_path: Path
     database_path: Path
     review_fetch_limit: int
+    review_sort_order: str
     report_stars_threshold: int
     page_timeout_seconds: int
+    playwright_headless: bool
+    playwright_slow_mo_ms: int
+    playwright_save_screenshots: bool
+    playwright_wait_networkidle: bool
+    playwright_pause_before_sort_seconds: int
+    playwright_save_sort_debug_steps: bool
     scheduler_poll_seconds: int
     schedule_frequency: str
     schedule_day: str
@@ -23,13 +30,8 @@ class Settings:
     schedule_minute: int
     timezone: ZoneInfo
     log_level: str
-    smtp_sender: str
-    smtp_recipients: list[str]
-    smtp_host: str
-    smtp_port: int
-    smtp_use_tls: bool
-    smtp_username: str
-    smtp_password: str
+    google_spreadsheet_id: str
+    google_service_account_file: Path | None
     points: list[MonitoringPoint]
 
 
@@ -100,8 +102,23 @@ def load_settings(env_path: Path, config_path: Path | None = None) -> Settings:
         config_path=resolved_config,
         database_path=Path(_read_env("APP_DATABASE_PATH", "data/review_analysis.sqlite3", env_values)),
         review_fetch_limit=int(_read_env("APP_REVIEW_FETCH_LIMIT", "20", env_values)),
+        review_sort_order=_read_env("APP_REVIEW_SORT_ORDER", "newest", env_values).lower(),
         report_stars_threshold=int(_read_env("APP_REPORT_STARS_THRESHOLD", "4", env_values)),
         page_timeout_seconds=int(_read_env("APP_PAGE_TIMEOUT_SECONDS", "45", env_values)),
+        playwright_headless=_read_bool("APP_PLAYWRIGHT_HEADLESS", True, env_values),
+        playwright_slow_mo_ms=int(_read_env("APP_PLAYWRIGHT_SLOW_MO_MS", "0", env_values)),
+        playwright_save_screenshots=_read_bool(
+            "APP_PLAYWRIGHT_SAVE_SCREENSHOTS", False, env_values
+        ),
+        playwright_wait_networkidle=_read_bool(
+            "APP_PLAYWRIGHT_WAIT_NETWORKIDLE", True, env_values
+        ),
+        playwright_pause_before_sort_seconds=int(
+            _read_env("APP_PLAYWRIGHT_PAUSE_BEFORE_SORT_SECONDS", "0", env_values)
+        ),
+        playwright_save_sort_debug_steps=_read_bool(
+            "APP_PLAYWRIGHT_SAVE_SORT_DEBUG_STEPS", False, env_values
+        ),
         scheduler_poll_seconds=int(_read_env("APP_SCHEDULER_POLL_SECONDS", "60", env_values)),
         schedule_frequency=_read_env("APP_SCHEDULE_FREQUENCY", "weekly", env_values),
         schedule_day=_read_env("APP_SCHEDULE_DAY", "monday", env_values),
@@ -109,17 +126,10 @@ def load_settings(env_path: Path, config_path: Path | None = None) -> Settings:
         schedule_minute=int(_read_env("APP_SCHEDULE_MINUTE", "0", env_values)),
         timezone=ZoneInfo(_read_env("APP_TIMEZONE", "Europe/Moscow", env_values)),
         log_level=_read_env("APP_LOG_LEVEL", "INFO", env_values).upper(),
-        smtp_sender=_read_env("SMTP_SENDER", "", env_values),
-        smtp_recipients=[
-            item.strip()
-            for item in _read_env("SMTP_RECIPIENTS", "", env_values).split(",")
-            if item.strip()
-        ],
-        smtp_host=_read_env("SMTP_HOST", "", env_values),
-        smtp_port=int(_read_env("SMTP_PORT", "587", env_values)),
-        smtp_use_tls=_read_bool("SMTP_USE_TLS", True, env_values),
-        smtp_username=_read_env("SMTP_USERNAME", "", env_values),
-        smtp_password=_read_env("SMTP_PASSWORD", "", env_values),
+        google_spreadsheet_id=_read_env("GOOGLE_SPREADSHEET_ID", "", env_values),
+        google_service_account_file=_path_or_none(
+            _read_env("GOOGLE_SERVICE_ACCOUNT_FILE", "", env_values)
+        ),
         points=points,
     )
     validate_settings(settings)
@@ -129,10 +139,16 @@ def load_settings(env_path: Path, config_path: Path | None = None) -> Settings:
 def validate_settings(settings: Settings) -> None:
     if settings.review_fetch_limit <= 0:
         raise ValueError("APP_REVIEW_FETCH_LIMIT должен быть больше нуля.")
+    if settings.review_sort_order not in {"newest", "oldest"}:
+        raise ValueError("APP_REVIEW_SORT_ORDER должен быть newest или oldest.")
     if settings.report_stars_threshold < 1 or settings.report_stars_threshold > 5:
         raise ValueError("APP_REPORT_STARS_THRESHOLD должен быть в диапазоне от 1 до 5.")
     if settings.page_timeout_seconds <= 0:
         raise ValueError("APP_PAGE_TIMEOUT_SECONDS должен быть больше нуля.")
+    if settings.playwright_slow_mo_ms < 0:
+        raise ValueError("APP_PLAYWRIGHT_SLOW_MO_MS не может быть отрицательным.")
+    if settings.playwright_pause_before_sort_seconds < 0:
+        raise ValueError("APP_PLAYWRIGHT_PAUSE_BEFORE_SORT_SECONDS не может быть отрицательным.")
     if settings.scheduler_poll_seconds <= 0:
         raise ValueError("APP_SCHEDULER_POLL_SECONDS должен быть больше нуля.")
     if settings.schedule_frequency not in {"weekly", "daily"}:
@@ -151,10 +167,13 @@ def validate_settings(settings: Settings) -> None:
         raise ValueError("APP_SCHEDULE_HOUR должен быть в диапазоне от 0 до 23.")
     if settings.schedule_minute < 0 or settings.schedule_minute > 59:
         raise ValueError("APP_SCHEDULE_MINUTE должен быть в диапазоне от 0 до 59.")
-    if settings.smtp_host and not settings.smtp_recipients:
-        raise ValueError("Если SMTP_HOST указан, необходимо заполнить SMTP_RECIPIENTS.")
-    if settings.smtp_host and not (settings.smtp_sender or settings.smtp_username):
-        raise ValueError("Если SMTP_HOST указан, необходимо заполнить SMTP_SENDER или SMTP_USERNAME.")
+    if settings.google_spreadsheet_id and settings.google_service_account_file is None:
+        raise ValueError(
+            "Если GOOGLE_SPREADSHEET_ID указан, необходимо заполнить GOOGLE_SERVICE_ACCOUNT_FILE."
+        )
+    if settings.google_service_account_file and not settings.google_service_account_file.exists():
+        raise ValueError("Файл сервисного аккаунта Google не найден.")
+
     seen_ids: set[str] = set()
     for point in settings.points:
         if point.id in seen_ids:
@@ -164,3 +183,8 @@ def validate_settings(settings: Settings) -> None:
             raise ValueError(
                 f"Точка {point.id} должна содержать хотя бы одну ссылку на площадку."
             )
+
+
+def _path_or_none(value: str) -> Path | None:
+    normalized = value.strip()
+    return Path(normalized) if normalized else None
