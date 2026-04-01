@@ -28,6 +28,7 @@ def build_settings() -> Settings:
         delay_jitter_seconds=3,
         point_retry_delay_seconds=300,
         point_max_attempts=2,
+        failed_rerun_interval_seconds=3600,
         sheets_flush_each_point=False,
         scheduler_poll_seconds=60,
         schedule_frequency="weekly",

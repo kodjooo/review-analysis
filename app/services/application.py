@@ -55,7 +55,11 @@ class ReviewMonitoringApplication:
             return self._rerun_failed_points()
 
         if command == "schedule":
-            self.scheduler.run_forever(self.monitoring_service.run_once)
+            self.scheduler.run_forever(
+                main_callback=self.monitoring_service.run_once,
+                rerun_failed_callback=lambda: self._rerun_failed_points() == 0,
+                has_failed_points_callback=self._has_failed_points,
+            )
             return 0
 
         result = self.monitoring_service.run_once()
@@ -82,6 +86,9 @@ class ReviewMonitoringApplication:
         )
         result = self.monitoring_service.run_once(points=points)
         return 0 if result else 1
+
+    def _has_failed_points(self) -> bool:
+        return bool(self.sheets_service.load_skipped_point_ids())
 
     def _test_output(self) -> int:
         started = datetime.now(tz=self.settings.timezone)

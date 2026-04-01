@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timedelta
 from logging import Logger
 
 from app.core.config import Settings
@@ -23,15 +23,44 @@ class SchedulerService:
         self.settings = settings
         self.logger = logger
         self.last_trigger_key: str | None = None
+        self.next_failed_rerun_at: datetime | None = None
 
-    def run_forever(self, callback: Callable[[], bool]) -> None:
+    def run_forever(
+        self,
+        main_callback: Callable[[], bool],
+        rerun_failed_callback: Callable[[], bool],
+        has_failed_points_callback: Callable[[], bool],
+    ) -> None:
         self.logger.info("Запущен планировщик.")
         while True:
             now = datetime.now(tz=self.settings.timezone)
+
             if self._is_due(now):
                 self.logger.info("Наступило время планового запуска.")
-                callback()
+                main_callback()
+                self.next_failed_rerun_at = now + timedelta(
+                    seconds=self.settings.failed_rerun_interval_seconds
+                )
                 time.sleep(self.settings.scheduler_poll_seconds)
+                continue
+
+            if (
+                self.next_failed_rerun_at is not None
+                and now >= self.next_failed_rerun_at
+            ):
+                if has_failed_points_callback():
+                    self.logger.info("Наступило время повторного прохода пропущенных точек.")
+                    rerun_failed_callback()
+                    if has_failed_points_callback():
+                        self.next_failed_rerun_at = now + timedelta(
+                            seconds=self.settings.failed_rerun_interval_seconds
+                        )
+                    else:
+                        self.logger.info("Пропущенные точки успешно добраны, hourly rerun остановлен.")
+                        self.next_failed_rerun_at = None
+                else:
+                    self.next_failed_rerun_at = None
+
             time.sleep(self.settings.scheduler_poll_seconds)
 
     def _is_due(self, now: datetime) -> bool:
