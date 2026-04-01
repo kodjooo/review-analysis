@@ -38,12 +38,15 @@ Google-таблица должна быть расшарена на сервис
 
 ```bash
 docker compose build
-docker compose run --rm app python -m app.main init-db
-docker compose run --rm app python -m app.main run
-docker compose run --rm app python -m app.main test-output
-docker compose up scheduler
+docker compose up -d app
+docker compose exec app python -m app.main init-db
+docker compose exec app python -m app.main run
+docker compose exec app python -m app.main test-output
+docker compose up -d scheduler
 docker compose run --rm tests
 ```
+
+`app` держится как постоянный служебный контейнер, чтобы ручные команды выполнялись через `docker compose exec` и не создавали временные `review-analysis-app-run-*` контейнеры.
 
 ## Visual Playwright
 
@@ -105,8 +108,9 @@ mkdir -p secure
 ```bash
 cd /usr/local/automation/review-analysis
 docker compose build
-docker compose run --rm app python -m app.main init-db
-docker compose run --rm app python -m app.main run
+docker compose up -d app
+docker compose exec app python -m app.main init-db
+docker compose exec app python -m app.main run
 ```
 
 Запуск по расписанию:
@@ -136,8 +140,9 @@ ssh codex@<SERVER_HOST>
 cd /usr/local/automation/review-analysis
 git pull origin master
 docker compose build
+docker compose up -d app
 docker compose run --rm tests
-docker compose run --rm app python -m app.main run
+docker compose exec app python -m app.main run
 docker compose up -d scheduler
 ```
 
