@@ -95,6 +95,40 @@ def test_report_builder_displays_2gis_platform_name() -> None:
     assert report.sheets[1].rows[1][2] == "2gis"
 
 
+def test_report_builder_formats_float_ratings_with_one_decimal() -> None:
+    point = MonitoringPoint(
+        id="point-1",
+        name="Точка",
+        type="Винотека",
+        address="Краснодар",
+        yandex_url="https://example.com/yandex",
+        twogis_url="https://example.com/2gis",
+        is_active=True,
+    )
+    delta = PlatformDelta(
+        point_id=point.id,
+        platform=PlatformName.TWOGIS,
+        previous_review_count=10,
+        current_review_count=11,
+        previous_rating=4.900000095367432,
+        current_rating=5.0,
+        new_reviews=[],
+        low_rated_new_reviews=[],
+        status=PlatformStatus.SUCCESS,
+    )
+    point_report = PointReport(point=point, deltas={PlatformName.TWOGIS: delta})
+    result = MonitoringRunResult(
+        run_started_at=datetime(2026, 4, 1, 10, 0, 0),
+        run_finished_at=datetime(2026, 4, 1, 10, 5, 0),
+        point_reports=[point_report],
+    )
+
+    report = ReportBuilder(stars_threshold=4).build(result)
+
+    assert report.sheets[1].rows[1][6] == "4.9"
+    assert report.sheets[1].rows[1][7] == "5.0"
+
+
 def test_report_builder_low_rated_sheet_contains_only_new_low_rated_reviews_for_each_platform() -> None:
     point = MonitoringPoint(
         id="point-1",

@@ -75,14 +75,28 @@ class BaseReviewAdapter(ABC):
         source_url = getattr(point, self.platform_url_field)
         html = self._load_html(source_url)
         review_count, rating, raw_reviews = self.parse_html(html, source_url=source_url)
-        reviews = [self._build_review(source_url, item) for item in raw_reviews]
+        reviews: list[Review] = []
+        invalid_reviews_count = 0
+        for item in raw_reviews:
+            review = self._build_review(source_url, item)
+            if review is None:
+                invalid_reviews_count += 1
+                continue
+            reviews.append(review)
+        if invalid_reviews_count:
+            logger.info(
+                "Для %s по точке %s отфильтровано некорректных отзывов: %s.",
+                self.platform.value,
+                point.id,
+                invalid_reviews_count,
+            )
         return PlatformSnapshot(
             point_id=point.id,
             platform=self.platform,
             source_url=source_url,
             collected_at=datetime.now(tz=self.settings.timezone),
             review_count=review_count,
-            rating=rating,
+            rating=self._normalize_rating(rating),
             reviews=reviews[: self.settings.review_fetch_limit],
         )
 
@@ -356,7 +370,7 @@ class BaseReviewAdapter(ABC):
         project_root = Path(__file__).resolve().parents[2]
         return project_root / name
 
-    def _build_review(self, source_url: str, item: dict[str, Any]) -> Review:
+    def _build_review(self, source_url: str, item: dict[str, Any]) -> Review | None:
         review = Review(
             platform=self.platform,
             published_at=str(item.get("published_at", "")).strip(),
@@ -366,8 +380,22 @@ class BaseReviewAdapter(ABC):
             author_name=self._none_if_empty(item.get("author_name")),
             external_id=self._none_if_empty(item.get("external_id")),
         )
+        if not self._is_valid_review(review):
+            return None
         review.signature = make_review_signature(review)
         return review
+
+    @staticmethod
+    def _is_valid_review(review: Review) -> bool:
+        if not 1 <= review.stars <= 5:
+            return False
+        if review.text:
+            return True
+        return any([review.external_id, review.published_at, review.author_name])
+
+    @staticmethod
+    def _normalize_rating(value: float) -> float:
+        return round(float(value), 1)
 
     @staticmethod
     def _none_if_empty(value: object) -> str | None:

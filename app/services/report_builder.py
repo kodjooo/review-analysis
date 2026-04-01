@@ -119,6 +119,8 @@ class ReportBuilder:
 
     @staticmethod
     def _format_value(value: object) -> str:
+        if isinstance(value, float):
+            return f"{value:.1f}"
         return "н/д" if value is None else str(value)
 
     @staticmethod

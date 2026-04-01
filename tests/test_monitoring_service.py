@@ -41,7 +41,28 @@ class FakeRepository:
 
 
 class FakeReviewFetcher:
+    def __init__(self, fail_once_for_point_ids: set[str] | None = None) -> None:
+        self.fail_once_for_point_ids = fail_once_for_point_ids or set()
+        self.failed_once: set[tuple[str, PlatformName]] = set()
+
     def fetch_point_reviews(self, point: MonitoringPoint, platform: PlatformName) -> PlatformSnapshot:
+        if (
+            point.id in self.fail_once_for_point_ids
+            and (point.id, platform) == (point.id, PlatformName.YANDEX)
+            and (point.id, platform) not in self.failed_once
+        ):
+            self.failed_once.add((point.id, platform))
+            return PlatformSnapshot(
+                point_id=point.id,
+                platform=platform,
+                source_url=point.yandex_url,
+                collected_at=datetime.now(tz=ZoneInfo("Europe/Moscow")),
+                review_count=0,
+                rating=0.0,
+                reviews=[],
+                status=PlatformStatus.ERROR,
+                error_message="Антибот",
+            )
         return PlatformSnapshot(
             point_id=point.id,
             platform=platform,
@@ -99,6 +120,8 @@ def build_settings(flush_each_point: bool) -> SimpleNamespace:
         delay_between_platforms_seconds=5,
         delay_between_points_seconds=10,
         delay_jitter_seconds=3,
+        point_retry_delay_seconds=300,
+        point_max_attempts=2,
         sheets_flush_each_point=flush_each_point,
         points=[
             MonitoringPoint(
@@ -123,14 +146,14 @@ def build_settings(flush_each_point: bool) -> SimpleNamespace:
     )
 
 
-def build_service(settings: SimpleNamespace):
+def build_service(settings: SimpleNamespace, review_fetcher: FakeReviewFetcher | None = None):
     repository = FakeRepository()
     sheets_service = FakeSheetsService()
     service = MonitoringService(
         settings=settings,
         logger=getLogger("test-monitoring-service"),
         repository=repository,
-        review_fetcher=FakeReviewFetcher(),
+        review_fetcher=review_fetcher or FakeReviewFetcher(),
         report_builder=FakeReportBuilder(),
         sheets_service=sheets_service,
     )
@@ -164,3 +187,20 @@ def test_monitoring_service_waits_between_platforms_and_points(monkeypatch) -> N
     assert success is True
     assert sleep_calls == [7, 12, 7]
     assert len(sheets_service.exports) == 1
+
+
+def test_monitoring_service_retries_failed_point_and_skips_failed_attempt_export(monkeypatch) -> None:
+    settings = build_settings(flush_each_point=True)
+    review_fetcher = FakeReviewFetcher(fail_once_for_point_ids={"point-1"})
+    service, repository, sheets_service = build_service(settings, review_fetcher=review_fetcher)
+    sleep_calls: list[int] = []
+    monkeypatch.setattr("app.services.monitoring_service.time.sleep", sleep_calls.append)
+    monkeypatch.setattr("app.services.monitoring_service.random.randint", lambda start, end: 0)
+
+    success = service.run_once()
+
+    assert success is True
+    assert len(repository.saved_snapshots) == 4
+    assert [len(report.point_reports) for report in sheets_service.exports] == [1, 2, 2]
+    assert sleep_calls == [5, 300, 5, 10, 5]
+    assert repository.finished_runs[-1] == (1, "completed")

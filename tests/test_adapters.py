@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 from app.adapters.twogis import TwoGisAdapter
 from app.adapters.yandex import YandexAdapter
 from app.core.config import Settings
+from app.core.models import MonitoringPoint
 
 
 def build_settings() -> Settings:
@@ -25,6 +26,8 @@ def build_settings() -> Settings:
         delay_between_platforms_seconds=5,
         delay_between_points_seconds=10,
         delay_jitter_seconds=3,
+        point_retry_delay_seconds=300,
+        point_max_attempts=2,
         sheets_flush_each_point=False,
         scheduler_poll_seconds=60,
         schedule_frequency="weekly",
@@ -272,3 +275,79 @@ def test_twogis_adapter_sets_unknown_author_placeholder_when_name_missing() -> N
     )
 
     assert review["author_name"] == "Имя не определено"
+
+def test_adapter_fetch_skips_invalid_zero_star_reviews() -> None:
+    adapter = YandexAdapter(build_settings())
+    adapter._load_html = lambda _: "<html></html>"  # type: ignore[method-assign]
+    adapter.parse_html = lambda html, source_url=None: (  # type: ignore[method-assign]
+        42,
+        5.0,
+        [
+            {
+                "external_id": "bad-review",
+                "author_name": "Тест",
+                "published_at": "",
+                "text": "",
+                "source_url": None,
+                "stars": 0,
+            },
+            {
+                "external_id": "good-review",
+                "author_name": "Тест",
+                "published_at": "2026-04-01T10:00:00+03:00",
+                "text": "Нормальный отзыв",
+                "source_url": None,
+                "stars": 5,
+            }
+        ],
+    )
+
+    snapshot = adapter.fetch(
+        MonitoringPoint(
+            id="point-1",
+            name="Точка 1",
+            type="Винотека",
+            address="Краснодар",
+            yandex_url="https://example.com/yandex",
+            twogis_url="https://example.com/2gis",
+            is_active=True,
+        )
+    )
+
+    assert snapshot.review_count == 42
+    assert snapshot.rating == 5.0
+    assert len(snapshot.reviews) == 1
+    assert snapshot.reviews[0].external_id == "good-review"
+
+
+def test_adapter_fetch_rounds_snapshot_rating() -> None:
+    adapter = TwoGisAdapter(build_settings())
+    adapter._load_html = lambda _: "<html></html>"  # type: ignore[method-assign]
+    adapter.parse_html = lambda html, source_url=None: (  # type: ignore[method-assign]
+        15,
+        4.900000095367432,
+        [
+            {
+                "external_id": "review-1",
+                "author_name": "Тест",
+                "published_at": "2026-04-01T10:00:00+03:00",
+                "text": "Хороший отзыв",
+                "source_url": None,
+                "stars": 5,
+            }
+        ],
+    )
+
+    snapshot = adapter.fetch(
+        MonitoringPoint(
+            id="point-1",
+            name="Точка 1",
+            type="Винотека",
+            address="Краснодар",
+            yandex_url="https://example.com/yandex",
+            twogis_url="https://example.com/2gis",
+            is_active=True,
+        )
+    )
+
+    assert snapshot.rating == 4.9

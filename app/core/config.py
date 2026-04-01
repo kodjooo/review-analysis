@@ -26,6 +26,8 @@ class Settings:
     delay_between_platforms_seconds: int
     delay_between_points_seconds: int
     delay_jitter_seconds: int
+    point_retry_delay_seconds: int
+    point_max_attempts: int
     sheets_flush_each_point: bool
     scheduler_poll_seconds: int
     schedule_frequency: str
@@ -53,9 +55,12 @@ def parse_env_file(env_path: Path) -> dict[str, str]:
 
 
 def _read_env(name: str, default: str, env_values: dict[str, str]) -> str:
+    runtime_value = os.getenv(name)
+    if runtime_value is not None:
+        return runtime_value
     if name in env_values:
         return env_values[name]
-    return os.getenv(name, default)
+    return default
 
 
 def _read_bool(name: str, default: bool, env_values: dict[str, str]) -> bool:
@@ -130,6 +135,10 @@ def load_settings(env_path: Path, config_path: Path | None = None) -> Settings:
             _read_env("APP_DELAY_BETWEEN_POINTS_SECONDS", "0", env_values)
         ),
         delay_jitter_seconds=int(_read_env("APP_DELAY_JITTER_SECONDS", "0", env_values)),
+        point_retry_delay_seconds=int(
+            _read_env("APP_POINT_RETRY_DELAY_SECONDS", "300", env_values)
+        ),
+        point_max_attempts=int(_read_env("APP_POINT_MAX_ATTEMPTS", "2", env_values)),
         sheets_flush_each_point=_read_bool("APP_SHEETS_FLUSH_EACH_POINT", False, env_values),
         scheduler_poll_seconds=int(_read_env("APP_SCHEDULER_POLL_SECONDS", "60", env_values)),
         schedule_frequency=_read_env("APP_SCHEDULE_FREQUENCY", "weekly", env_values),
@@ -167,6 +176,10 @@ def validate_settings(settings: Settings) -> None:
         raise ValueError("APP_DELAY_BETWEEN_POINTS_SECONDS не может быть отрицательным.")
     if settings.delay_jitter_seconds < 0:
         raise ValueError("APP_DELAY_JITTER_SECONDS не может быть отрицательным.")
+    if settings.point_retry_delay_seconds < 0:
+        raise ValueError("APP_POINT_RETRY_DELAY_SECONDS не может быть отрицательным.")
+    if settings.point_max_attempts <= 0:
+        raise ValueError("APP_POINT_MAX_ATTEMPTS должен быть больше нуля.")
     if settings.scheduler_poll_seconds <= 0:
         raise ValueError("APP_SCHEDULER_POLL_SECONDS должен быть больше нуля.")
     if settings.schedule_frequency not in {"weekly", "daily"}:
