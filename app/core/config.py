@@ -23,6 +23,10 @@ class Settings:
     playwright_wait_networkidle: bool
     playwright_pause_before_sort_seconds: int
     playwright_save_sort_debug_steps: bool
+    delay_between_platforms_seconds: int
+    delay_between_points_seconds: int
+    delay_jitter_seconds: int
+    sheets_flush_each_point: bool
     scheduler_poll_seconds: int
     schedule_frequency: str
     schedule_day: str
@@ -119,6 +123,14 @@ def load_settings(env_path: Path, config_path: Path | None = None) -> Settings:
         playwright_save_sort_debug_steps=_read_bool(
             "APP_PLAYWRIGHT_SAVE_SORT_DEBUG_STEPS", False, env_values
         ),
+        delay_between_platforms_seconds=int(
+            _read_env("APP_DELAY_BETWEEN_PLATFORMS_SECONDS", "0", env_values)
+        ),
+        delay_between_points_seconds=int(
+            _read_env("APP_DELAY_BETWEEN_POINTS_SECONDS", "0", env_values)
+        ),
+        delay_jitter_seconds=int(_read_env("APP_DELAY_JITTER_SECONDS", "0", env_values)),
+        sheets_flush_each_point=_read_bool("APP_SHEETS_FLUSH_EACH_POINT", False, env_values),
         scheduler_poll_seconds=int(_read_env("APP_SCHEDULER_POLL_SECONDS", "60", env_values)),
         schedule_frequency=_read_env("APP_SCHEDULE_FREQUENCY", "weekly", env_values),
         schedule_day=_read_env("APP_SCHEDULE_DAY", "monday", env_values),
@@ -149,6 +161,12 @@ def validate_settings(settings: Settings) -> None:
         raise ValueError("APP_PLAYWRIGHT_SLOW_MO_MS не может быть отрицательным.")
     if settings.playwright_pause_before_sort_seconds < 0:
         raise ValueError("APP_PLAYWRIGHT_PAUSE_BEFORE_SORT_SECONDS не может быть отрицательным.")
+    if settings.delay_between_platforms_seconds < 0:
+        raise ValueError("APP_DELAY_BETWEEN_PLATFORMS_SECONDS не может быть отрицательным.")
+    if settings.delay_between_points_seconds < 0:
+        raise ValueError("APP_DELAY_BETWEEN_POINTS_SECONDS не может быть отрицательным.")
+    if settings.delay_jitter_seconds < 0:
+        raise ValueError("APP_DELAY_JITTER_SECONDS не может быть отрицательным.")
     if settings.scheduler_poll_seconds <= 0:
         raise ValueError("APP_SCHEDULER_POLL_SECONDS должен быть больше нуля.")
     if settings.schedule_frequency not in {"weekly", "daily"}:

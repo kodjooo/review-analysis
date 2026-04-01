@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import random
+import time
 from datetime import datetime
 from logging import Logger
 
@@ -37,23 +39,38 @@ class MonitoringService:
 
         point_reports: list[PointReport] = []
         has_errors = False
+        active_points = [point for point in self.settings.points if point.is_active]
 
         try:
-            for point in self.settings.points:
-                if not point.is_active:
-                    self.logger.info("Точка %s пропущена: мониторинг выключен.", point.id)
-                    continue
-
+            for point_index, point in enumerate(active_points):
                 self.logger.info("Обрабатывается точка %s.", point.id)
                 deltas = {}
-                for platform in (PlatformName.YANDEX, PlatformName.TWOGIS):
+                platforms = (PlatformName.YANDEX, PlatformName.TWOGIS)
+                for platform_index, platform in enumerate(platforms):
                     snapshot = self.review_fetcher.fetch_point_reviews(point, platform)
                     previous = self.repository.get_previous_snapshot(point.id, platform.value)
                     deltas[platform] = self.comparison_service.compare(snapshot, previous)
                     self.repository.save_snapshot(run_id, snapshot)
                     if snapshot.status == PlatformStatus.ERROR:
                         has_errors = True
-                point_reports.append(PointReport(point=point, deltas=deltas))
+
+                    if platform_index < len(platforms) - 1:
+                        self._sleep_with_jitter(
+                            base_seconds=self.settings.delay_between_platforms_seconds,
+                            reason=f"перед следующей площадкой точки {point.id}",
+                        )
+
+                point_report = PointReport(point=point, deltas=deltas)
+                point_reports.append(point_report)
+
+                if self.settings.sheets_flush_each_point:
+                    self._export_partial_report(started_at, point_reports)
+
+                if point_index < len(active_points) - 1:
+                    self._sleep_with_jitter(
+                        base_seconds=self.settings.delay_between_points_seconds,
+                        reason=f"перед следующей точкой после {point.id}",
+                    )
 
             finished_at = datetime.now(tz=self.settings.timezone)
             result = MonitoringRunResult(
@@ -74,3 +91,27 @@ class MonitoringService:
             self.repository.finish_run(run_id=run_id, finished_at=finished_at, status="failed")
             self.logger.exception("Мониторинг завершился с ошибкой: %s", error)
             return False
+
+    def _export_partial_report(self, started_at: datetime, point_reports: list[PointReport]) -> None:
+        partial_result = MonitoringRunResult(
+            run_started_at=started_at,
+            run_finished_at=datetime.now(tz=self.settings.timezone),
+            point_reports=list(point_reports),
+        )
+        self.sheets_service.export(self.report_builder.build(partial_result))
+        self.logger.info(
+            "Промежуточный отчет выгружен в Google Sheets после обработки %s точек.",
+            len(point_reports),
+        )
+
+    def _sleep_with_jitter(self, base_seconds: int, reason: str) -> None:
+        jitter = 0
+        if self.settings.delay_jitter_seconds > 0:
+            jitter = random.randint(0, self.settings.delay_jitter_seconds)
+
+        total_delay = base_seconds + jitter
+        if total_delay <= 0:
+            return
+
+        self.logger.info("Пауза %s сек. %s.", total_delay, reason)
+        time.sleep(total_delay)
