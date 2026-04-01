@@ -9,6 +9,7 @@ from app.core.models import (
     PlatformStatus,
     PointReport,
     Review,
+    SkippedPointReport,
 )
 from app.core.utils import make_review_signature
 from app.db.repository import PreviousSnapshot
@@ -41,6 +42,7 @@ def test_report_builder_includes_low_rated_reviews() -> None:
         current_review_count=11,
         previous_rating=4.5,
         current_rating=4.4,
+        last_updated_at="2026-03-30 09:05:00",
         new_reviews=[review],
         low_rated_new_reviews=[review],
         status=PlatformStatus.SUCCESS,
@@ -57,7 +59,8 @@ def test_report_builder_includes_low_rated_reviews() -> None:
     summary_rows = report.sheets[1].rows
     low_rated_rows = report.sheets[2].rows
 
-    assert summary_rows[1][8] == "https://example.com/yandex"
+    assert summary_rows[1][9] == "https://example.com/yandex"
+    assert summary_rows[1][8] == "2026-03-30 09:05:00"
     assert low_rated_rows[1][5] == "Нужно улучшить сервис"
     assert low_rated_rows[1][4] == "4"
 
@@ -79,6 +82,7 @@ def test_report_builder_displays_2gis_platform_name() -> None:
         current_review_count=18,
         previous_rating=5.0,
         current_rating=5.0,
+        last_updated_at="2026-03-30 09:05:00",
         new_reviews=[],
         low_rated_new_reviews=[],
         status=PlatformStatus.SUCCESS,
@@ -112,6 +116,7 @@ def test_report_builder_formats_float_ratings_with_one_decimal() -> None:
         current_review_count=11,
         previous_rating=4.900000095367432,
         current_rating=5.0,
+        last_updated_at="2026-04-01 10:05:00",
         new_reviews=[],
         low_rated_new_reviews=[],
         status=PlatformStatus.SUCCESS,
@@ -162,6 +167,7 @@ def test_report_builder_low_rated_sheet_contains_only_new_low_rated_reviews_for_
         current_review_count=42,
         previous_rating=5.0,
         current_rating=4.9,
+        last_updated_at="2026-03-31 12:05:00",
         new_reviews=[yandex_review],
         low_rated_new_reviews=[yandex_review],
         status=PlatformStatus.SUCCESS,
@@ -173,6 +179,7 @@ def test_report_builder_low_rated_sheet_contains_only_new_low_rated_reviews_for_
         current_review_count=18,
         previous_rating=5.0,
         current_rating=4.8,
+        last_updated_at="2026-03-31 12:05:00",
         new_reviews=[twogis_review],
         low_rated_new_reviews=[twogis_review],
         status=PlatformStatus.SUCCESS,
@@ -198,6 +205,39 @@ def test_report_builder_low_rated_sheet_contains_only_new_low_rated_reviews_for_
     assert rows[1][5] == "Яндекс: новый низкий отзыв"
     assert rows[2][2] == "2gis"
     assert rows[2][5] == "2GIS: новый низкий отзыв"
+
+
+def test_report_builder_includes_skipped_points_sheet() -> None:
+    point = MonitoringPoint(
+        id="point-42",
+        name="Точка",
+        type="Винотека",
+        address="Белгород",
+        yandex_url="https://example.com/yandex",
+        twogis_url="https://example.com/2gis",
+        is_active=True,
+    )
+    skipped = SkippedPointReport(
+        point=point,
+        failed_platforms=[PlatformName.YANDEX],
+        attempts=2,
+        last_attempted_at=datetime(2026, 4, 1, 13, 15, 0),
+        last_successful_update_at="2026-04-01 13:14:00",
+        error_message="yandex: captcha",
+    )
+    result = MonitoringRunResult(
+        run_started_at=datetime(2026, 4, 1, 13, 0, 0),
+        run_finished_at=datetime(2026, 4, 1, 13, 20, 0),
+        point_reports=[],
+        skipped_points=[skipped],
+    )
+
+    report = ReportBuilder(stars_threshold=4).build(result)
+
+    assert report.sheets[3].title == "skipped_points_last_run"
+    assert report.sheets[3].rows[1][0] == "point-42"
+    assert report.sheets[3].rows[1][3] == "yandex"
+    assert report.sheets[3].rows[1][6] == "2026-04-01 13:14:00"
 
 
 def test_end_to_end_new_low_rated_review_appears_in_low_rated_sheet() -> None:

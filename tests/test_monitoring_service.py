@@ -6,7 +6,13 @@ from logging import getLogger
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
-from app.core.models import MonitoringPoint, PlatformName, PlatformSnapshot, PlatformStatus, Review
+from app.core.models import (
+    MonitoringPoint,
+    PlatformName,
+    PlatformSnapshot,
+    PlatformStatus,
+    Review,
+)
 from app.services.monitoring_service import MonitoringService
 
 
@@ -16,6 +22,7 @@ class FakeDelta:
     current_review_count: int | None
     previous_rating: float | None
     current_rating: float | None
+    last_updated_at: str | None
     new_reviews: list[Review]
     low_rated_new_reviews: list[Review]
     status: PlatformStatus
@@ -41,32 +48,31 @@ class FakeRepository:
 
 
 class FakeReviewFetcher:
-    def __init__(self, fail_once_for_point_ids: set[str] | None = None) -> None:
+    def __init__(
+        self,
+        fail_once_for_point_ids: set[str] | None = None,
+        always_fail_for_point_ids: set[str] | None = None,
+    ) -> None:
         self.fail_once_for_point_ids = fail_once_for_point_ids or set()
+        self.always_fail_for_point_ids = always_fail_for_point_ids or set()
         self.failed_once: set[tuple[str, PlatformName]] = set()
 
     def fetch_point_reviews(self, point: MonitoringPoint, platform: PlatformName) -> PlatformSnapshot:
+        if point.id in self.always_fail_for_point_ids and platform == PlatformName.YANDEX:
+            return self._error_snapshot(point, platform, "Антибот")
         if (
             point.id in self.fail_once_for_point_ids
-            and (point.id, platform) == (point.id, PlatformName.YANDEX)
+            and platform == PlatformName.YANDEX
             and (point.id, platform) not in self.failed_once
         ):
             self.failed_once.add((point.id, platform))
-            return PlatformSnapshot(
-                point_id=point.id,
-                platform=platform,
-                source_url=point.yandex_url,
-                collected_at=datetime.now(tz=ZoneInfo("Europe/Moscow")),
-                review_count=0,
-                rating=0.0,
-                reviews=[],
-                status=PlatformStatus.ERROR,
-                error_message="Антибот",
-            )
+            return self._error_snapshot(point, platform, "Антибот")
+
+        source_url = point.yandex_url if platform == PlatformName.YANDEX else point.twogis_url
         return PlatformSnapshot(
             point_id=point.id,
             platform=platform,
-            source_url=point.yandex_url if platform == PlatformName.YANDEX else point.twogis_url,
+            source_url=source_url,
             collected_at=datetime.now(tz=ZoneInfo("Europe/Moscow")),
             review_count=1,
             rating=5.0,
@@ -76,13 +82,27 @@ class FakeReviewFetcher:
                     published_at="2026-04-01T10:00:00+03:00",
                     stars=2 if platform == PlatformName.YANDEX else 5,
                     text=f"Отзыв {point.id} {platform.value}",
-                    source_url=point.yandex_url if platform == PlatformName.YANDEX else point.twogis_url,
+                    source_url=source_url,
                     author_name="Тестовый автор",
                     external_id=f"{point.id}-{platform.value}",
                     signature=f"{point.id}-{platform.value}",
                 )
             ],
             status=PlatformStatus.SUCCESS,
+        )
+
+    def _error_snapshot(self, point: MonitoringPoint, platform: PlatformName, message: str) -> PlatformSnapshot:
+        source_url = point.yandex_url if platform == PlatformName.YANDEX else point.twogis_url
+        return PlatformSnapshot(
+            point_id=point.id,
+            platform=platform,
+            source_url=source_url,
+            collected_at=datetime.now(tz=ZoneInfo("Europe/Moscow")),
+            review_count=0,
+            rating=0.0,
+            reviews=[],
+            status=PlatformStatus.ERROR,
+            error_message=message,
         )
 
 
@@ -93,6 +113,7 @@ class FakeComparisonService:
             current_review_count=snapshot.review_count,
             previous_rating=None,
             current_rating=snapshot.rating,
+            last_updated_at=snapshot.collected_at.strftime("%Y-%m-%d %H:%M:%S"),
             new_reviews=snapshot.reviews,
             low_rated_new_reviews=[review for review in snapshot.reviews if review.stars <= 4],
             status=snapshot.status,
@@ -108,9 +129,17 @@ class FakeReportBuilder:
 class FakeSheetsService:
     def __init__(self) -> None:
         self.exports: list = []
+        self.cleared_titles: list[str] = []
+        self.failed_point_ids: list[str] = []
 
     def export(self, report) -> None:
         self.exports.append(report)
+
+    def clear_worksheet(self, title: str) -> None:
+        self.cleared_titles.append(title)
+
+    def load_skipped_point_ids(self, title: str = "skipped_points_last_run") -> list[str]:
+        return list(self.failed_point_ids)
 
 
 def build_settings(flush_each_point: bool) -> SimpleNamespace:
@@ -146,19 +175,23 @@ def build_settings(flush_each_point: bool) -> SimpleNamespace:
     )
 
 
-def build_service(settings: SimpleNamespace, review_fetcher: FakeReviewFetcher | None = None):
+def build_service(
+    settings: SimpleNamespace,
+    review_fetcher: FakeReviewFetcher | None = None,
+    sheets_service: FakeSheetsService | None = None,
+):
     repository = FakeRepository()
-    sheets_service = FakeSheetsService()
+    sheets = sheets_service or FakeSheetsService()
     service = MonitoringService(
         settings=settings,
         logger=getLogger("test-monitoring-service"),
         repository=repository,
         review_fetcher=review_fetcher or FakeReviewFetcher(),
         report_builder=FakeReportBuilder(),
-        sheets_service=sheets_service,
+        sheets_service=sheets,
     )
     service.comparison_service = FakeComparisonService()
-    return service, repository, sheets_service
+    return service, repository, sheets
 
 
 def test_monitoring_service_flushes_after_each_point_when_enabled(monkeypatch) -> None:
@@ -172,6 +205,7 @@ def test_monitoring_service_flushes_after_each_point_when_enabled(monkeypatch) -
     assert success is True
     assert len(repository.saved_snapshots) == 4
     assert [len(report.point_reports) for report in sheets_service.exports] == [1, 2, 2]
+    assert sheets_service.cleared_titles == ["skipped_points_last_run"]
     assert repository.finished_runs[-1] == (1, "completed")
 
 
@@ -202,5 +236,27 @@ def test_monitoring_service_retries_failed_point_and_skips_failed_attempt_export
     assert success is True
     assert len(repository.saved_snapshots) == 4
     assert [len(report.point_reports) for report in sheets_service.exports] == [1, 2, 2]
+    assert sheets_service.exports[-1].skipped_points == []
     assert sleep_calls == [5, 300, 5, 10, 5]
     assert repository.finished_runs[-1] == (1, "completed")
+
+
+def test_monitoring_service_puts_permanently_failed_point_into_skipped_list(monkeypatch) -> None:
+    settings = build_settings(flush_each_point=True)
+    review_fetcher = FakeReviewFetcher(always_fail_for_point_ids={"point-1"})
+    service, repository, sheets_service = build_service(settings, review_fetcher=review_fetcher)
+    sleep_calls: list[int] = []
+    monkeypatch.setattr("app.services.monitoring_service.time.sleep", sleep_calls.append)
+    monkeypatch.setattr("app.services.monitoring_service.random.randint", lambda start, end: 0)
+
+    success = service.run_once()
+
+    assert success is True
+    assert len(repository.saved_snapshots) == 2
+    assert repository.finished_runs[-1] == (1, "completed_with_errors")
+    assert len(sheets_service.exports[-1].skipped_points) == 1
+    skipped = sheets_service.exports[-1].skipped_points[0]
+    assert skipped.point.id == "point-1"
+    assert skipped.failed_platforms == [PlatformName.YANDEX]
+    assert skipped.error_message == "yandex: Антибот"
+    assert sleep_calls == [5, 300, 5, 10, 5]

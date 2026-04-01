@@ -21,6 +21,7 @@ class SnapshotComparisonService:
                 current_review_count=None,
                 previous_rating=previous.rating if previous else None,
                 current_rating=None,
+                last_updated_at=None,
                 status=PlatformStatus.ERROR,
                 error_message=snapshot.error_message,
             )
@@ -42,6 +43,7 @@ class SnapshotComparisonService:
             current_review_count=snapshot.review_count,
             previous_rating=previous.rating if previous else None,
             current_rating=snapshot.rating,
+            last_updated_at=snapshot.collected_at.strftime("%Y-%m-%d %H:%M:%S"),
             new_reviews=new_reviews,
             low_rated_new_reviews=low_rated_new_reviews,
             status=PlatformStatus.SUCCESS,

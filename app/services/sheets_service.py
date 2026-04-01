@@ -24,16 +24,9 @@ class GoogleSheetsService:
         self.logger = logger
 
     def export(self, report: SheetsReport) -> None:
-        if not self.settings.google_service_account_file or not self.settings.google_spreadsheet_id:
-            self.logger.warning("Google Sheets не настроен, выгрузка отчета пропущена.")
+        spreadsheet = self._get_spreadsheet()
+        if spreadsheet is None:
             return
-
-        credentials = Credentials.from_service_account_file(
-            str(self.settings.google_service_account_file),
-            scopes=self.SCOPES,
-        )
-        service = build("sheets", "v4", credentials=credentials, cache_discovery=False)
-        spreadsheet = service.spreadsheets()
 
         existing_titles = self._fetch_sheet_titles(spreadsheet)
         for sheet in report.sheets:
@@ -58,6 +51,50 @@ class GoogleSheetsService:
             "Отчет выгружен в Google Sheets: %s",
             self.settings.google_spreadsheet_id,
         )
+
+    def clear_worksheet(self, title: str) -> None:
+        spreadsheet = self._get_spreadsheet()
+        if spreadsheet is None:
+            return
+
+        if title not in self._fetch_sheet_titles(spreadsheet):
+            return
+
+        spreadsheet.values().clear(
+            spreadsheetId=self.settings.google_spreadsheet_id,
+            range=title,
+        ).execute()
+
+    def load_skipped_point_ids(self, title: str = "skipped_points_last_run") -> list[str]:
+        spreadsheet = self._get_spreadsheet()
+        if spreadsheet is None:
+            return []
+
+        if title not in self._fetch_sheet_titles(spreadsheet):
+            return []
+
+        values = (
+            spreadsheet.values()
+            .get(
+                spreadsheetId=self.settings.google_spreadsheet_id,
+                range=f"{title}!A2:A",
+            )
+            .execute()
+            .get("values", [])
+        )
+        return [row[0] for row in values if row and row[0].strip()]
+
+    def _get_spreadsheet(self):
+        if not self.settings.google_service_account_file or not self.settings.google_spreadsheet_id:
+            self.logger.warning("Google Sheets не настроен, выгрузка отчета пропущена.")
+            return None
+
+        credentials = Credentials.from_service_account_file(
+            str(self.settings.google_service_account_file),
+            scopes=self.SCOPES,
+        )
+        service = build("sheets", "v4", credentials=credentials, cache_discovery=False)
+        return service.spreadsheets()
 
     def _fetch_sheet_titles(self, spreadsheet) -> set[str]:
         response = spreadsheet.get(spreadsheetId=self.settings.google_spreadsheet_id).execute()

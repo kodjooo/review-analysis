@@ -60,6 +60,7 @@ class PlatformDelta:
     current_review_count: int | None
     previous_rating: float | None
     current_rating: float | None
+    last_updated_at: str | None = None
     new_reviews: list[Review] = field(default_factory=list)
     low_rated_new_reviews: list[Review] = field(default_factory=list)
     status: PlatformStatus = PlatformStatus.SUCCESS
@@ -73,10 +74,21 @@ class PointReport:
 
 
 @dataclass(slots=True)
+class SkippedPointReport:
+    point: MonitoringPoint
+    failed_platforms: list[PlatformName]
+    attempts: int
+    last_attempted_at: datetime
+    error_message: str
+    last_successful_update_at: str | None = None
+
+
+@dataclass(slots=True)
 class MonitoringRunResult:
     run_started_at: datetime
     run_finished_at: datetime
     point_reports: list[PointReport]
+    skipped_points: list[SkippedPointReport] = field(default_factory=list)
 
 
 @dataclass(slots=True)
