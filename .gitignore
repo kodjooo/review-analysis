@@ -3,6 +3,8 @@
 .DS_Store
 ._*
 secure/*.json
+secure/
+tmp/
 .pytest_cache/
 __pycache__/
 *.pyc
