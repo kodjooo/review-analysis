@@ -261,20 +261,9 @@ class MonitoringService:
                     f"Validation gate: количество отзывов {snapshot.review_count} меньше нуля для {platform.value}."
                 )
                 continue
-            if snapshot.review_count > 0 and not snapshot.reviews:
-                errors[platform] = (
-                    f"Validation gate: у {platform.value} есть aggregate count={snapshot.review_count}, "
-                    "но не получен ни один отзыв."
-                )
-                continue
             if any(review.stars < 1 or review.stars > 5 for review in snapshot.reviews):
                 errors[platform] = (
                     f"Validation gate: в {platform.value} есть отзыв с рейтингом вне диапазона 1..5."
-                )
-                continue
-            if any(not review.text.strip() for review in snapshot.reviews):
-                errors[platform] = (
-                    f"Validation gate: в {platform.value} есть отзыв без текста после нормализации."
                 )
                 continue
         if errors:

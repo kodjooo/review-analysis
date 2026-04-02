@@ -261,11 +261,10 @@ def test_validation_gate_skips_invalid_point_without_saving_snapshots(monkeypatc
         point,
         PlatformName.YANDEX,
         stars=5,
-        text="",
+        text="Валидный текст",
         review_count=25,
-        rating=5.0,
+        rating=6.0,
     )
-    invalid_snapshot.reviews = []
     review_fetcher = FakeReviewFetcher(
         scenario={
             (point.id, PlatformName.YANDEX, 1): invalid_snapshot,
