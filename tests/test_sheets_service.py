@@ -137,6 +137,42 @@ def test_export_merge_keeps_existing_summary_and_replaces_skipped_sheet() -> Non
     assert existing["skipped_points_last_run"] == [["ID точки", "Тип магазина"]]
 
 
+def test_export_default_run_merges_summary_instead_of_overwriting() -> None:
+    existing = {
+        "summary": [
+            ["Тип магазина", "Адрес", "Площадка"],
+            ["Мильстрим", "Адрес 1", "yandex"],
+        ],
+        "run_info": [["Параметр", "Значение"], ["Начало запуска", "old"]],
+        "skipped_points_last_run": [["ID точки", "Тип магазина"], ["8", "Мильстрим"]],
+    }
+    report = SheetsReport(
+        spreadsheet_title="test",
+        sheets=[
+            SheetTab(title="run_info", rows=[["Параметр", "Значение"], ["Начало запуска", "new"]]),
+            SheetTab(
+                title="summary",
+                rows=[
+                    ["Тип магазина", "Адрес", "Площадка"],
+                    ["Мильстрим", "Адрес 2", "2gis"],
+                ],
+            ),
+            SheetTab(title="skipped_points_last_run", rows=[["ID точки", "Тип магазина"]]),
+        ],
+    )
+
+    service = build_service(existing)
+
+    service.export(report, merge_with_existing=False)
+
+    assert existing["summary"][1:] == [
+        ["Мильстрим", "Адрес 1", "yandex"],
+        ["Мильстрим", "Адрес 2", "2gis"],
+    ]
+    assert existing["run_info"][1][1] == "new"
+    assert existing["skipped_points_last_run"] == [["ID точки", "Тип магазина"]]
+
+
 def test_execute_retries_google_sheets_request_until_success() -> None:
     attempts = {"count": 0}
 

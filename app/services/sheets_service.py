@@ -46,14 +46,15 @@ class GoogleSheetsService:
                 existing_titles.add(sheet.title)
 
             rows = sheet.rows
-            should_replace = not merge_with_existing or sheet.title == self.SKIPPED_SHEET
-            if merge_with_existing:
+            should_merge = sheet.title in {self.SUMMARY_SHEET, self.LOW_RATED_SHEET}
+            should_replace = sheet.title in {self.RUN_INFO_SHEET, self.SKIPPED_SHEET}
+            if should_merge:
                 if sheet.title == self.SUMMARY_SHEET:
                     rows = self._merge_summary_rows(spreadsheet, sheet)
                 elif sheet.title == self.LOW_RATED_SHEET:
                     rows = self._merge_low_rated_rows(spreadsheet, sheet)
-                elif sheet.title == self.RUN_INFO_SHEET:
-                    continue
+            elif merge_with_existing and sheet.title == self.RUN_INFO_SHEET:
+                continue
 
             if should_replace:
                 self._execute(
