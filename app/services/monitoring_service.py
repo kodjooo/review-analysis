@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import random
 import time
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from logging import Logger
 
@@ -22,13 +21,6 @@ from app.services.comparison import SnapshotComparisonService
 from app.services.report_builder import ReportBuilder
 from app.services.review_fetcher import ReviewFetcher
 from app.services.sheets_service import GoogleSheetsService
-
-
-@dataclass(slots=True)
-class RetryPolicy:
-    max_attempts: int
-    delay_seconds: int
-    dominant_failure_kind: FailureKind
 
 
 class MonitoringService:
@@ -131,94 +123,63 @@ class MonitoringService:
         platforms = (PlatformName.YANDEX, PlatformName.TWOGIS)
 
         snapshots: dict[PlatformName, PlatformSnapshot] = {}
-        retry_policy = RetryPolicy(
-            max_attempts=self.settings.point_max_attempts,
-            delay_seconds=self.settings.point_retry_delay_seconds,
-            dominant_failure_kind=FailureKind.UNKNOWN,
-        )
+        failed_platforms: list[PlatformName] = []
 
-        attempt = 1
-        while attempt <= retry_policy.max_attempts:
-            snapshots = {}
-            failed_platforms: list[PlatformName] = []
+        for platform_index, platform in enumerate(platforms):
+            snapshot = self._fetch_platform_snapshot(point, platform)
+            snapshots[platform] = snapshot
+            self._register_platform_outcome(snapshot)
 
-            for platform_index, platform in enumerate(platforms):
-                snapshot = self._fetch_platform_snapshot(point, platform)
-                snapshots[platform] = snapshot
-                self._register_platform_outcome(snapshot)
+            if snapshot.status == PlatformStatus.ERROR:
+                failed_platforms.append(platform)
 
-                if snapshot.status == PlatformStatus.ERROR:
-                    failed_platforms.append(platform)
-                    # Атомарная логика по точке: как только одна площадка не прошла,
-                    # остальные запросы на этой попытке не имеют смысла для итоговой таблицы.
-                    break
-
-                if platform_index < len(platforms) - 1:
-                    self._sleep_with_jitter(
-                        base_seconds=self.settings.delay_between_platforms_seconds,
-                        reason=f"перед следующей площадкой точки {point.id}",
-                    )
-
-            validation_errors = self._validate_point_snapshots(point, snapshots)
-            if validation_errors:
-                for platform, message in validation_errors.items():
-                    failed_platforms.append(platform)
-                    snapshots[platform] = self._build_error_snapshot(
-                        point=point,
-                        platform=platform,
-                        message=message,
-                        failure_kind=FailureKind.VALIDATION,
-                    )
-
-            if not failed_platforms:
-                deltas = {}
-                for platform in platforms:
-                    snapshot = snapshots[platform]
-                    previous = self.repository.get_previous_snapshot(point.id, platform.value)
-                    deltas[platform] = self.comparison_service.compare(snapshot, previous)
-                    self.repository.save_snapshot(run_id, snapshot)
-                return PointReport(point=point, deltas=deltas), None
-
-            retry_policy = self._resolve_retry_policy(snapshots, failed_platforms)
-            failed_platforms = list(dict.fromkeys(failed_platforms))
-            self.logger.warning(
-                "Точка %s не будет выгружена в таблицу на попытке %s: ошибка по площадкам %s.",
-                point.id,
-                attempt,
-                ", ".join(platform.value for platform in failed_platforms),
-            )
-            if attempt < retry_policy.max_attempts:
-                self.logger.info(
-                    "Пауза %s сек. перед повторной попыткой точки %s. Причина retry: %s.",
-                    retry_policy.delay_seconds,
-                    point.id,
-                    retry_policy.dominant_failure_kind.value,
+            if platform_index < len(platforms) - 1:
+                self._sleep_with_jitter(
+                    base_seconds=self.settings.delay_between_platforms_seconds,
+                    reason=f"перед следующей площадкой точки {point.id}",
                 )
-                time.sleep(retry_policy.delay_seconds)
-                attempt += 1
-                continue
 
-            self.logger.error(
-                "Точка %s пропущена после %s попыток. В таблицу она не будет записана.",
-                point.id,
-                retry_policy.max_attempts,
-            )
-            last_attempted_at = max(snapshot.collected_at for snapshot in snapshots.values())
-            last_successful_update_at = self._last_successful_update_at(snapshots)
-            return None, SkippedPointReport(
-                point=point,
-                failed_platforms=failed_platforms,
-                attempts=attempt,
-                last_attempted_at=last_attempted_at,
-                error_message=" | ".join(
-                    f"{platform.value}: {snapshots[platform].error_message or 'неизвестная ошибка'}"
-                    for platform in failed_platforms
-                ),
-                failure_kind=retry_policy.dominant_failure_kind,
-                last_successful_update_at=last_successful_update_at,
-            )
+        validation_errors = self._validate_point_snapshots(point, snapshots)
+        if validation_errors:
+            for platform, message in validation_errors.items():
+                failed_platforms.append(platform)
+                snapshots[platform] = self._build_error_snapshot(
+                    point=point,
+                    platform=platform,
+                    message=message,
+                    failure_kind=FailureKind.VALIDATION,
+                )
 
-        return None, None
+        failed_platforms = list(dict.fromkeys(failed_platforms))
+        if not failed_platforms:
+            deltas = {}
+            for platform in platforms:
+                snapshot = snapshots[platform]
+                previous = self.repository.get_previous_snapshot(point.id, platform.value)
+                deltas[platform] = self.comparison_service.compare(snapshot, previous)
+                self.repository.save_snapshot(run_id, snapshot)
+            return PointReport(point=point, deltas=deltas), None
+
+        dominant_failure_kind = self._resolve_failure_kind(snapshots, failed_platforms)
+        self.logger.warning(
+            "Точка %s не будет выгружена в таблицу в текущем проходе: ошибка по площадкам %s.",
+            point.id,
+            ", ".join(platform.value for platform in failed_platforms),
+        )
+        last_attempted_at = max(snapshot.collected_at for snapshot in snapshots.values())
+        last_successful_update_at = self._last_successful_update_at(snapshots)
+        return None, SkippedPointReport(
+            point=point,
+            failed_platforms=failed_platforms,
+            attempts=1,
+            last_attempted_at=last_attempted_at,
+            error_message=" | ".join(
+                f"{platform.value}: {snapshots[platform].error_message or 'неизвестная ошибка'}"
+                for platform in failed_platforms
+            ),
+            failure_kind=dominant_failure_kind,
+            last_successful_update_at=last_successful_update_at,
+        )
 
     def _fetch_platform_snapshot(
         self,
@@ -274,50 +235,17 @@ class MonitoringService:
             )
         return errors
 
-    def _resolve_retry_policy(
+    def _resolve_failure_kind(
         self,
         snapshots: dict[PlatformName, PlatformSnapshot],
         failed_platforms: list[PlatformName],
-    ) -> RetryPolicy:
+    ) -> FailureKind:
         kinds = [
             snapshots[platform].failure_kind or FailureKind.UNKNOWN
             for platform in failed_platforms
             if platform in snapshots
         ]
-        dominant_kind = kinds[0] if kinds else FailureKind.UNKNOWN
-        policy_map = {
-            FailureKind.ANTIBOT: RetryPolicy(
-                max_attempts=self.settings.retry_antibot_max_attempts,
-                delay_seconds=self.settings.retry_antibot_delay_seconds,
-                dominant_failure_kind=FailureKind.ANTIBOT,
-            ),
-            FailureKind.CIRCUIT_BREAKER: RetryPolicy(
-                max_attempts=self.settings.retry_antibot_max_attempts,
-                delay_seconds=self.settings.retry_antibot_delay_seconds,
-                dominant_failure_kind=FailureKind.CIRCUIT_BREAKER,
-            ),
-            FailureKind.NETWORK: RetryPolicy(
-                max_attempts=self.settings.retry_network_max_attempts,
-                delay_seconds=self.settings.retry_network_delay_seconds,
-                dominant_failure_kind=FailureKind.NETWORK,
-            ),
-            FailureKind.PARSE: RetryPolicy(
-                max_attempts=self.settings.retry_parse_max_attempts,
-                delay_seconds=self.settings.retry_parse_delay_seconds,
-                dominant_failure_kind=FailureKind.PARSE,
-            ),
-            FailureKind.VALIDATION: RetryPolicy(
-                max_attempts=self.settings.retry_parse_max_attempts,
-                delay_seconds=self.settings.retry_parse_delay_seconds,
-                dominant_failure_kind=FailureKind.VALIDATION,
-            ),
-            FailureKind.UNKNOWN: RetryPolicy(
-                max_attempts=self.settings.retry_unknown_max_attempts,
-                delay_seconds=self.settings.retry_unknown_delay_seconds,
-                dominant_failure_kind=FailureKind.UNKNOWN,
-            ),
-        }
-        return policy_map.get(dominant_kind, policy_map[FailureKind.UNKNOWN])
+        return kinds[0] if kinds else FailureKind.UNKNOWN
 
     def _register_platform_outcome(self, snapshot: PlatformSnapshot) -> None:
         if snapshot.platform != PlatformName.YANDEX:

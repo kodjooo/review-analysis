@@ -229,7 +229,7 @@ def test_monitoring_service_flushes_after_each_point_when_enabled(monkeypatch) -
     assert repository.finished_runs[-1] == (1, "completed")
 
 
-def test_monitoring_service_uses_network_retry_policy(monkeypatch) -> None:
+def test_monitoring_service_marks_point_skipped_without_inrun_retry(monkeypatch) -> None:
     settings = build_settings(flush_each_point=False)
     point = settings.points[0]
     review_fetcher = FakeReviewFetcher(
@@ -242,7 +242,7 @@ def test_monitoring_service_uses_network_retry_policy(monkeypatch) -> None:
             ),
         }
     )
-    service, repository, _ = build_service(settings, review_fetcher=review_fetcher)
+    service, repository, sheets_service = build_service(settings, review_fetcher=review_fetcher)
     sleep_calls: list[int] = []
     monkeypatch.setattr("app.services.monitoring_service.time.sleep", sleep_calls.append)
     monkeypatch.setattr("app.services.monitoring_service.random.randint", lambda start, end: 0)
@@ -250,8 +250,12 @@ def test_monitoring_service_uses_network_retry_policy(monkeypatch) -> None:
     success = service.run_once(points=[point])
 
     assert success is True
-    assert len(repository.saved_snapshots) == 2
-    assert sleep_calls == [120, 5]
+    assert repository.saved_snapshots == []
+    assert sleep_calls == [5]
+    skipped = sheets_service.exports[-1].skipped_points[0]
+    assert skipped.failed_platforms == [PlatformName.YANDEX]
+    assert skipped.failure_kind == FailureKind.NETWORK
+    assert review_fetcher.attempts[(point.id, PlatformName.TWOGIS)] == 1
 
 
 def test_validation_gate_skips_invalid_point_without_saving_snapshots(monkeypatch) -> None:
