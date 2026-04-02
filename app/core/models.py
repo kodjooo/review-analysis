@@ -16,6 +16,15 @@ class PlatformStatus(StrEnum):
     SKIPPED = "skipped"
 
 
+class FailureKind(StrEnum):
+    ANTIBOT = "antibot"
+    NETWORK = "network"
+    PARSE = "parse"
+    VALIDATION = "validation"
+    CIRCUIT_BREAKER = "circuit_breaker"
+    UNKNOWN = "unknown"
+
+
 @dataclass(slots=True)
 class MonitoringPoint:
     id: str
@@ -50,6 +59,7 @@ class PlatformSnapshot:
     reviews: list[Review]
     status: PlatformStatus = PlatformStatus.SUCCESS
     error_message: str | None = None
+    failure_kind: FailureKind | None = None
 
 
 @dataclass(slots=True)
@@ -80,6 +90,7 @@ class SkippedPointReport:
     attempts: int
     last_attempted_at: datetime
     error_message: str
+    failure_kind: FailureKind = FailureKind.UNKNOWN
     last_successful_update_at: str | None = None
 
 

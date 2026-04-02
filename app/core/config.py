@@ -29,6 +29,16 @@ class Settings:
     point_retry_delay_seconds: int
     point_max_attempts: int
     failed_rerun_interval_seconds: int
+    retry_antibot_delay_seconds: int
+    retry_network_delay_seconds: int
+    retry_parse_delay_seconds: int
+    retry_unknown_delay_seconds: int
+    retry_antibot_max_attempts: int
+    retry_network_max_attempts: int
+    retry_parse_max_attempts: int
+    retry_unknown_max_attempts: int
+    yandex_captcha_consecutive_threshold: int
+    yandex_circuit_breaker_seconds: int
     sheets_api_retry_delay_seconds: int
     sheets_api_max_attempts: int
     sheets_flush_each_point: bool
@@ -145,6 +155,36 @@ def load_settings(env_path: Path, config_path: Path | None = None) -> Settings:
         failed_rerun_interval_seconds=int(
             _read_env("APP_FAILED_RERUN_INTERVAL_SECONDS", "3600", env_values)
         ),
+        retry_antibot_delay_seconds=int(
+            _read_env("APP_RETRY_ANTIBOT_DELAY_SECONDS", "300", env_values)
+        ),
+        retry_network_delay_seconds=int(
+            _read_env("APP_RETRY_NETWORK_DELAY_SECONDS", "120", env_values)
+        ),
+        retry_parse_delay_seconds=int(
+            _read_env("APP_RETRY_PARSE_DELAY_SECONDS", "0", env_values)
+        ),
+        retry_unknown_delay_seconds=int(
+            _read_env("APP_RETRY_UNKNOWN_DELAY_SECONDS", "180", env_values)
+        ),
+        retry_antibot_max_attempts=int(
+            _read_env("APP_RETRY_ANTIBOT_MAX_ATTEMPTS", "2", env_values)
+        ),
+        retry_network_max_attempts=int(
+            _read_env("APP_RETRY_NETWORK_MAX_ATTEMPTS", "3", env_values)
+        ),
+        retry_parse_max_attempts=int(
+            _read_env("APP_RETRY_PARSE_MAX_ATTEMPTS", "1", env_values)
+        ),
+        retry_unknown_max_attempts=int(
+            _read_env("APP_RETRY_UNKNOWN_MAX_ATTEMPTS", "2", env_values)
+        ),
+        yandex_captcha_consecutive_threshold=int(
+            _read_env("APP_YANDEX_CAPTCHA_CONSECUTIVE_THRESHOLD", "3", env_values)
+        ),
+        yandex_circuit_breaker_seconds=int(
+            _read_env("APP_YANDEX_CIRCUIT_BREAKER_SECONDS", "1800", env_values)
+        ),
         sheets_api_retry_delay_seconds=int(
             _read_env("APP_SHEETS_API_RETRY_DELAY_SECONDS", "10", env_values)
         ),
@@ -194,6 +234,26 @@ def validate_settings(settings: Settings) -> None:
         raise ValueError("APP_POINT_MAX_ATTEMPTS должен быть больше нуля.")
     if settings.failed_rerun_interval_seconds <= 0:
         raise ValueError("APP_FAILED_RERUN_INTERVAL_SECONDS должен быть больше нуля.")
+    if settings.retry_antibot_delay_seconds < 0:
+        raise ValueError("APP_RETRY_ANTIBOT_DELAY_SECONDS не может быть отрицательным.")
+    if settings.retry_network_delay_seconds < 0:
+        raise ValueError("APP_RETRY_NETWORK_DELAY_SECONDS не может быть отрицательным.")
+    if settings.retry_parse_delay_seconds < 0:
+        raise ValueError("APP_RETRY_PARSE_DELAY_SECONDS не может быть отрицательным.")
+    if settings.retry_unknown_delay_seconds < 0:
+        raise ValueError("APP_RETRY_UNKNOWN_DELAY_SECONDS не может быть отрицательным.")
+    if settings.retry_antibot_max_attempts <= 0:
+        raise ValueError("APP_RETRY_ANTIBOT_MAX_ATTEMPTS должен быть больше нуля.")
+    if settings.retry_network_max_attempts <= 0:
+        raise ValueError("APP_RETRY_NETWORK_MAX_ATTEMPTS должен быть больше нуля.")
+    if settings.retry_parse_max_attempts <= 0:
+        raise ValueError("APP_RETRY_PARSE_MAX_ATTEMPTS должен быть больше нуля.")
+    if settings.retry_unknown_max_attempts <= 0:
+        raise ValueError("APP_RETRY_UNKNOWN_MAX_ATTEMPTS должен быть больше нуля.")
+    if settings.yandex_captcha_consecutive_threshold <= 0:
+        raise ValueError("APP_YANDEX_CAPTCHA_CONSECUTIVE_THRESHOLD должен быть больше нуля.")
+    if settings.yandex_circuit_breaker_seconds < 0:
+        raise ValueError("APP_YANDEX_CIRCUIT_BREAKER_SECONDS не может быть отрицательным.")
     if settings.sheets_api_retry_delay_seconds < 0:
         raise ValueError("APP_SHEETS_API_RETRY_DELAY_SECONDS не может быть отрицательным.")
     if settings.sheets_api_max_attempts <= 0:

@@ -364,3 +364,12 @@ SQLite-файл хранится внутри `data/`, а сама папка п
 - Лист `skipped_points_last_run` при `rerun-failed` пересобирается заново по результату текущего догона: успешно добранные точки исчезают из списка, а оставшиеся проблемные точки сохраняются.
 - В сервисе Google Sheets все операции `get`, `clear`, `update` и `batchUpdate` выполняются через общий retry-слой с настройками `APP_SHEETS_API_RETRY_DELAY_SECONDS` и `APP_SHEETS_API_MAX_ATTEMPTS`.
 - Планировщик `SchedulerService` больше не падает от единичных исключений колбеков `main_callback`, `rerun_failed_callback` и `has_failed_points_callback`; ошибка логируется, а следующий цикл продолжается.
+
+## 2026-04-02 - Point-level validation gate, error-aware retry и Yandex circuit breaker
+- MonitoringService собирает данные точки во временный набор snapshot-объектов и коммитит точку только после полного успешного прохождения обеих площадок и point-level validation gate.
+- Point-level validation gate проверяет обязательное наличие успешных snapshot по yandex и 2gis, корректность aggregate-полей (rating в диапазоне 1..5, review_count не отрицательный), наличие отзывов при ненулевом count и валидность каждого нормализованного отзыва.
+- Если хотя бы одна площадка точки завершилась ошибкой или валидация точки не пройдена, точка не сохраняется в SQLite и не попадает в итоговые листы Google Sheets на этой попытке.
+- ReviewFetcher теперь классифицирует ошибки по типам ANTIBOT, NETWORK, PARSE и UNKNOWN; тип ошибки сохраняется в PlatformSnapshot и SkippedPointReport для последующей диагностики и выбора retry-политики.
+- Retry по точке стал error-aware: для антибота, сетевых ошибок, ошибок парсинга/валидации и прочих ошибок используются разные лимиты попыток и разные задержки через APP_RETRY_* переменные.
+- Для Yandex добавлен circuit breaker: после APP_YANDEX_CAPTCHA_CONSECUTIVE_THRESHOLD подряд антибот-ошибок новые yandex-запросы временно не выполняются, а точки получают synthetic failure CIRCUIT_BREAKER и переносятся в следующий retry/rerun-цикл.
+- Итоговый лист summary продолжает обновляться только через merge/upsert по ключу точки и площадки; rerun-failed не очищает уже собранные строки и только дозаписывает или обновляет успешно добранные точки.
