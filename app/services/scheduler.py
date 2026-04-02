@@ -37,26 +37,49 @@ class SchedulerService:
 
             if self._is_due(now):
                 self.logger.info("Наступило время планового запуска.")
-                main_callback()
+                self._safe_invoke("Плановый запуск завершился ошибкой", main_callback)
                 self.next_failed_rerun_at = now + timedelta(
                     seconds=self.settings.failed_rerun_interval_seconds
                 )
                 time.sleep(self.settings.scheduler_poll_seconds)
                 continue
 
-            if (
-                self.next_failed_rerun_at is not None
-                and now >= self.next_failed_rerun_at
-            ):
-                if has_failed_points_callback():
+            if self.next_failed_rerun_at is not None and now >= self.next_failed_rerun_at:
+                has_failed_points = self._safe_check_failed_points(
+                    "Не удалось проверить список пропущенных точек перед rerun-failed",
+                    has_failed_points_callback,
+                )
+                if has_failed_points is None:
+                    self.next_failed_rerun_at = now + timedelta(
+                        seconds=self.settings.failed_rerun_interval_seconds
+                    )
+                    time.sleep(self.settings.scheduler_poll_seconds)
+                    continue
+
+                if has_failed_points:
                     self.logger.info("Наступило время повторного прохода пропущенных точек.")
-                    rerun_failed_callback()
-                    if has_failed_points_callback():
+                    if not self._safe_invoke(
+                        "Повторный проход пропущенных точек завершился ошибкой",
+                        rerun_failed_callback,
+                    ):
+                        self.next_failed_rerun_at = now + timedelta(
+                            seconds=self.settings.failed_rerun_interval_seconds
+                        )
+                        time.sleep(self.settings.scheduler_poll_seconds)
+                        continue
+
+                    has_failed_points = self._safe_check_failed_points(
+                        "Не удалось повторно проверить список пропущенных точек после rerun-failed",
+                        has_failed_points_callback,
+                    )
+                    if has_failed_points is None or has_failed_points:
                         self.next_failed_rerun_at = now + timedelta(
                             seconds=self.settings.failed_rerun_interval_seconds
                         )
                     else:
-                        self.logger.info("Пропущенные точки успешно добраны, hourly rerun остановлен.")
+                        self.logger.info(
+                            "Пропущенные точки успешно добраны, hourly rerun остановлен."
+                        )
                         self.next_failed_rerun_at = None
                 else:
                     self.next_failed_rerun_at = None
@@ -76,3 +99,23 @@ class SchedulerService:
         if is_due:
             self.last_trigger_key = current_key
         return is_due
+
+    def _safe_invoke(self, message: str, callback: Callable[[], bool]) -> bool:
+        try:
+            return callback()
+        except Exception as error:
+            self.logger.exception("%s: %s", message, error)
+            return False
+
+    def _safe_check_failed_points(
+        self,
+        message: str,
+        callback: Callable[[], bool],
+    ) -> bool | None:
+        try:
+            return callback()
+        except StopIteration:
+            raise
+        except Exception as error:
+            self.logger.exception("%s: %s", message, error)
+            return None

@@ -29,6 +29,8 @@ def build_settings() -> Settings:
         point_retry_delay_seconds=300,
         point_max_attempts=2,
         failed_rerun_interval_seconds=3600,
+        sheets_api_retry_delay_seconds=10,
+        sheets_api_max_attempts=3,
         sheets_flush_each_point=False,
         scheduler_poll_seconds=60,
         schedule_frequency="weekly",

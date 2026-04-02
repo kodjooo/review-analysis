@@ -129,11 +129,13 @@ class FakeReportBuilder:
 class FakeSheetsService:
     def __init__(self) -> None:
         self.exports: list = []
+        self.export_modes: list[bool] = []
         self.cleared_titles: list[str] = []
         self.failed_point_ids: list[str] = []
 
-    def export(self, report) -> None:
+    def export(self, report, merge_with_existing: bool = False) -> None:
         self.exports.append(report)
+        self.export_modes.append(merge_with_existing)
 
     def clear_worksheet(self, title: str) -> None:
         self.cleared_titles.append(title)
@@ -205,6 +207,7 @@ def test_monitoring_service_flushes_after_each_point_when_enabled(monkeypatch) -
     assert success is True
     assert len(repository.saved_snapshots) == 4
     assert [len(report.point_reports) for report in sheets_service.exports] == [1, 2, 2]
+    assert sheets_service.export_modes == [False, False, False]
     assert sheets_service.cleared_titles == ["skipped_points_last_run"]
     assert repository.finished_runs[-1] == (1, "completed")
 
@@ -221,6 +224,7 @@ def test_monitoring_service_waits_between_platforms_and_points(monkeypatch) -> N
     assert success is True
     assert sleep_calls == [7, 12, 7]
     assert len(sheets_service.exports) == 1
+    assert sheets_service.export_modes == [False]
 
 
 def test_monitoring_service_retries_failed_point_and_skips_failed_attempt_export(monkeypatch) -> None:
@@ -237,6 +241,7 @@ def test_monitoring_service_retries_failed_point_and_skips_failed_attempt_export
     assert len(repository.saved_snapshots) == 4
     assert [len(report.point_reports) for report in sheets_service.exports] == [1, 2, 2]
     assert sheets_service.exports[-1].skipped_points == []
+    assert sheets_service.export_modes == [False, False, False]
     assert sleep_calls == [5, 300, 5, 10, 5]
     assert repository.finished_runs[-1] == (1, "completed")
 

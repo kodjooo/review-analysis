@@ -84,7 +84,11 @@ class ReviewMonitoringApplication:
             len(points),
             ", ".join(point.id for point in points),
         )
-        result = self.monitoring_service.run_once(points=points)
+        result = self.monitoring_service.run_once(
+            points=points,
+            merge_with_existing=True,
+            reset_skipped_points_sheet=False,
+        )
         return 0 if result else 1
 
     def _has_failed_points(self) -> bool:

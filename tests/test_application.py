@@ -46,6 +46,8 @@ def test_application_reruns_only_failed_active_points() -> None:
     sheets_service.load_skipped_point_ids.assert_called_once()
     passed_points = monitoring_service.run_once.call_args.kwargs["points"]
     assert [point.id for point in passed_points] == ["point-1"]
+    assert monitoring_service.run_once.call_args.kwargs["merge_with_existing"] is True
+    assert monitoring_service.run_once.call_args.kwargs["reset_skipped_points_sheet"] is False
 
 
 def test_application_returns_zero_when_no_failed_points() -> None:

@@ -29,6 +29,8 @@ class Settings:
     point_retry_delay_seconds: int
     point_max_attempts: int
     failed_rerun_interval_seconds: int
+    sheets_api_retry_delay_seconds: int
+    sheets_api_max_attempts: int
     sheets_flush_each_point: bool
     scheduler_poll_seconds: int
     schedule_frequency: str
@@ -143,6 +145,12 @@ def load_settings(env_path: Path, config_path: Path | None = None) -> Settings:
         failed_rerun_interval_seconds=int(
             _read_env("APP_FAILED_RERUN_INTERVAL_SECONDS", "3600", env_values)
         ),
+        sheets_api_retry_delay_seconds=int(
+            _read_env("APP_SHEETS_API_RETRY_DELAY_SECONDS", "10", env_values)
+        ),
+        sheets_api_max_attempts=int(
+            _read_env("APP_SHEETS_API_MAX_ATTEMPTS", "3", env_values)
+        ),
         sheets_flush_each_point=_read_bool("APP_SHEETS_FLUSH_EACH_POINT", False, env_values),
         scheduler_poll_seconds=int(_read_env("APP_SCHEDULER_POLL_SECONDS", "60", env_values)),
         schedule_frequency=_read_env("APP_SCHEDULE_FREQUENCY", "weekly", env_values),
@@ -186,6 +194,10 @@ def validate_settings(settings: Settings) -> None:
         raise ValueError("APP_POINT_MAX_ATTEMPTS должен быть больше нуля.")
     if settings.failed_rerun_interval_seconds <= 0:
         raise ValueError("APP_FAILED_RERUN_INTERVAL_SECONDS должен быть больше нуля.")
+    if settings.sheets_api_retry_delay_seconds < 0:
+        raise ValueError("APP_SHEETS_API_RETRY_DELAY_SECONDS не может быть отрицательным.")
+    if settings.sheets_api_max_attempts <= 0:
+        raise ValueError("APP_SHEETS_API_MAX_ATTEMPTS должен быть больше нуля.")
     if settings.scheduler_poll_seconds <= 0:
         raise ValueError("APP_SCHEDULER_POLL_SECONDS должен быть больше нуля.")
     if settings.schedule_frequency not in {"weekly", "daily"}:

@@ -40,7 +40,12 @@ class MonitoringService:
         self.sheets_service = sheets_service
         self.comparison_service = SnapshotComparisonService(settings.report_stars_threshold)
 
-    def run_once(self, points: list[MonitoringPoint] | None = None) -> bool:
+    def run_once(
+        self,
+        points: list[MonitoringPoint] | None = None,
+        merge_with_existing: bool = False,
+        reset_skipped_points_sheet: bool = True,
+    ) -> bool:
         started_at = datetime.now(tz=self.settings.timezone)
         run_id = self.repository.create_run(started_at)
         self.logger.info("Старт мониторинга.")
@@ -50,7 +55,8 @@ class MonitoringService:
         has_errors = False
         active_points = points if points is not None else [point for point in self.settings.points if point.is_active]
 
-        self.sheets_service.clear_worksheet("skipped_points_last_run")
+        if reset_skipped_points_sheet:
+            self.sheets_service.clear_worksheet("skipped_points_last_run")
 
         try:
             for point_index, point in enumerate(active_points):
@@ -58,12 +64,22 @@ class MonitoringService:
                 if point_report is not None:
                     point_reports.append(point_report)
                     if self.settings.sheets_flush_each_point:
-                        self._export_partial_report(started_at, point_reports, skipped_points)
+                        self._export_partial_report(
+                            started_at,
+                            point_reports,
+                            skipped_points,
+                            merge_with_existing=merge_with_existing,
+                        )
                 if skipped_point is not None:
                     skipped_points.append(skipped_point)
                     has_errors = True
                     if self.settings.sheets_flush_each_point:
-                        self._export_partial_report(started_at, point_reports, skipped_points)
+                        self._export_partial_report(
+                            started_at,
+                            point_reports,
+                            skipped_points,
+                            merge_with_existing=merge_with_existing,
+                        )
 
                 if point_index < len(active_points) - 1:
                     self._sleep_with_jitter(
@@ -78,7 +94,10 @@ class MonitoringService:
                 point_reports=point_reports,
                 skipped_points=skipped_points,
             )
-            self.sheets_service.export(self.report_builder.build(result))
+            self.sheets_service.export(
+                self.report_builder.build(result),
+                merge_with_existing=merge_with_existing,
+            )
             self.repository.finish_run(
                 run_id=run_id,
                 finished_at=finished_at,
@@ -176,6 +195,7 @@ class MonitoringService:
         started_at: datetime,
         point_reports: list[PointReport],
         skipped_points: list[SkippedPointReport],
+        merge_with_existing: bool,
     ) -> None:
         partial_result = MonitoringRunResult(
             run_started_at=started_at,
@@ -183,7 +203,10 @@ class MonitoringService:
             point_reports=list(point_reports),
             skipped_points=list(skipped_points),
         )
-        self.sheets_service.export(self.report_builder.build(partial_result))
+        self.sheets_service.export(
+            self.report_builder.build(partial_result),
+            merge_with_existing=merge_with_existing,
+        )
         self.logger.info(
             "Промежуточный отчет выгружен в Google Sheets после обработки %s точек.",
             len(point_reports),

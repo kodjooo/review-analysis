@@ -19,7 +19,13 @@ def build_settings() -> SimpleNamespace:
 
 def test_scheduler_runs_hourly_reruns_until_failed_points_disappear(monkeypatch) -> None:
     settings = build_settings()
-    scheduler = SchedulerService(settings=settings, logger=SimpleNamespace(info=lambda *a, **k: None))
+    scheduler = SchedulerService(
+        settings=settings,
+        logger=SimpleNamespace(
+            info=lambda *a, **k: None,
+            exception=lambda *a, **k: None,
+        ),
+    )
     timeline = iter(
         [
             datetime(2026, 4, 1, 9, 0, 0, tzinfo=settings.timezone),

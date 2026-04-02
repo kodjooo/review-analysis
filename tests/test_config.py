@@ -25,6 +25,9 @@ def clear_runtime_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "APP_DELAY_JITTER_SECONDS",
         "APP_POINT_RETRY_DELAY_SECONDS",
         "APP_POINT_MAX_ATTEMPTS",
+        "APP_FAILED_RERUN_INTERVAL_SECONDS",
+        "APP_SHEETS_API_RETRY_DELAY_SECONDS",
+        "APP_SHEETS_API_MAX_ATTEMPTS",
         "APP_SHEETS_FLUSH_EACH_POINT",
         "APP_SCHEDULER_POLL_SECONDS",
         "APP_SCHEDULE_FREQUENCY",
@@ -59,6 +62,9 @@ def test_load_settings_reads_points(tmp_path: Path) -> None:
                 "APP_DELAY_JITTER_SECONDS=3",
                 "APP_POINT_RETRY_DELAY_SECONDS=300",
                 "APP_POINT_MAX_ATTEMPTS=2",
+                "APP_FAILED_RERUN_INTERVAL_SECONDS=3600",
+                "APP_SHEETS_API_RETRY_DELAY_SECONDS=10",
+                "APP_SHEETS_API_MAX_ATTEMPTS=3",
                 "APP_SHEETS_FLUSH_EACH_POINT=true",
                 "APP_SCHEDULER_POLL_SECONDS=30",
                 "APP_SCHEDULE_FREQUENCY=weekly",
@@ -102,6 +108,9 @@ def test_load_settings_reads_points(tmp_path: Path) -> None:
     assert settings.delay_jitter_seconds == 3
     assert settings.point_retry_delay_seconds == 300
     assert settings.point_max_attempts == 2
+    assert settings.failed_rerun_interval_seconds == 3600
+    assert settings.sheets_api_retry_delay_seconds == 10
+    assert settings.sheets_api_max_attempts == 3
     assert settings.sheets_flush_each_point is True
     assert len(settings.points) == 1
     assert settings.points[0].id == "point-1"
