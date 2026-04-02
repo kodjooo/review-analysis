@@ -37,8 +37,8 @@ def build_settings() -> Settings:
         retry_network_max_attempts=3,
         retry_parse_max_attempts=1,
         retry_unknown_max_attempts=2,
-        yandex_captcha_consecutive_threshold=3,
-        yandex_circuit_breaker_seconds=1800,
+        proxy_urls=[],
+        proxy_max_attempts=3,
         sheets_api_retry_delay_seconds=10,
         sheets_api_max_attempts=3,
         sheets_flush_each_point=False,
@@ -364,3 +364,22 @@ def test_adapter_fetch_rounds_snapshot_rating() -> None:
     )
 
     assert snapshot.rating == 4.9
+
+
+def test_adapter_builds_proxy_targets_from_settings() -> None:
+    settings = build_settings()
+    settings.proxy_urls = [
+        "http://user:pass@proxy1.example.com:8080",
+        "http://proxy2.example.com:3128",
+    ]
+    settings.proxy_max_attempts = 2
+    adapter = YandexAdapter(settings)
+
+    targets = adapter._build_proxy_targets()
+
+    assert len(targets) == 2
+    assert targets[0].server == "http://proxy1.example.com:8080"
+    assert targets[0].username == "user"
+    assert targets[0].password == "pass"
+    assert targets[0].state_label == "proxy-1"
+    assert targets[1].server == "http://proxy2.example.com:3128"

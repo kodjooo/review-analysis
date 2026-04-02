@@ -168,8 +168,8 @@ def build_settings(flush_each_point: bool) -> SimpleNamespace:
         retry_network_max_attempts=3,
         retry_parse_max_attempts=1,
         retry_unknown_max_attempts=2,
-        yandex_captcha_consecutive_threshold=3,
-        yandex_circuit_breaker_seconds=1800,
+        proxy_urls=[],
+        proxy_max_attempts=3,
         sheets_flush_each_point=flush_each_point,
         points=[
             MonitoringPoint(
@@ -285,31 +285,6 @@ def test_validation_gate_skips_invalid_point_without_saving_snapshots(monkeypatc
     assert repository.finished_runs[-1] == (1, "completed_with_errors")
     skipped = sheets_service.exports[-1].skipped_points[0]
     assert skipped.failure_kind == FailureKind.VALIDATION
-
-
-def test_yandex_circuit_breaker_opens_after_consecutive_antibot_errors(monkeypatch) -> None:
-    settings = build_settings(flush_each_point=False)
-    settings.yandex_captcha_consecutive_threshold = 1
-    point = settings.points[0]
-    review_fetcher = FakeReviewFetcher(
-        scenario={
-            (point.id, PlatformName.YANDEX, 1): FakeReviewFetcher._error_snapshot(
-                point,
-                PlatformName.YANDEX,
-                "captcha",
-                FailureKind.ANTIBOT,
-            ),
-        }
-    )
-    service, _, _ = build_service(settings, review_fetcher=review_fetcher)
-    monkeypatch.setattr("app.services.monitoring_service.time.sleep", lambda seconds: None)
-    monkeypatch.setattr("app.services.monitoring_service.random.randint", lambda start, end: 0)
-
-    service.run_once(points=[point])
-    snapshot = service._fetch_platform_snapshot(point, PlatformName.YANDEX)
-
-    assert snapshot.status == PlatformStatus.ERROR
-    assert snapshot.failure_kind == FailureKind.CIRCUIT_BREAKER
 
 
 def test_monitoring_service_rerun_mode_preserves_existing_summary_and_does_not_clear_skipped_sheet(monkeypatch) -> None:

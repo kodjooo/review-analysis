@@ -4,6 +4,7 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
 
 from app.core.models import MonitoringPoint
@@ -37,8 +38,8 @@ class Settings:
     retry_network_max_attempts: int
     retry_parse_max_attempts: int
     retry_unknown_max_attempts: int
-    yandex_captcha_consecutive_threshold: int
-    yandex_circuit_breaker_seconds: int
+    proxy_urls: list[str]
+    proxy_max_attempts: int
     sheets_api_retry_delay_seconds: int
     sheets_api_max_attempts: int
     sheets_flush_each_point: bool
@@ -79,6 +80,18 @@ def _read_env(name: str, default: str, env_values: dict[str, str]) -> str:
 def _read_bool(name: str, default: bool, env_values: dict[str, str]) -> bool:
     value = _read_env(name, "true" if default else "false", env_values)
     return value.lower() in {"1", "true", "yes", "on"}
+
+
+def _read_list(name: str, env_values: dict[str, str]) -> list[str]:
+    raw_value = _read_env(name, "", env_values)
+    if not raw_value.strip():
+        return []
+    return [item.strip() for item in raw_value.split(",") if item.strip()]
+
+
+def _is_valid_proxy_url(value: str) -> bool:
+    parsed = urlparse(value)
+    return bool(parsed.scheme and parsed.hostname and parsed.port)
 
 
 def _load_points(config_path: Path) -> list[MonitoringPoint]:
@@ -179,12 +192,8 @@ def load_settings(env_path: Path, config_path: Path | None = None) -> Settings:
         retry_unknown_max_attempts=int(
             _read_env("APP_RETRY_UNKNOWN_MAX_ATTEMPTS", "2", env_values)
         ),
-        yandex_captcha_consecutive_threshold=int(
-            _read_env("APP_YANDEX_CAPTCHA_CONSECUTIVE_THRESHOLD", "3", env_values)
-        ),
-        yandex_circuit_breaker_seconds=int(
-            _read_env("APP_YANDEX_CIRCUIT_BREAKER_SECONDS", "1800", env_values)
-        ),
+        proxy_urls=_read_list("APP_PROXY_URLS", env_values),
+        proxy_max_attempts=int(_read_env("APP_PROXY_MAX_ATTEMPTS", "3", env_values)),
         sheets_api_retry_delay_seconds=int(
             _read_env("APP_SHEETS_API_RETRY_DELAY_SECONDS", "10", env_values)
         ),
@@ -250,10 +259,11 @@ def validate_settings(settings: Settings) -> None:
         raise ValueError("APP_RETRY_PARSE_MAX_ATTEMPTS должен быть больше нуля.")
     if settings.retry_unknown_max_attempts <= 0:
         raise ValueError("APP_RETRY_UNKNOWN_MAX_ATTEMPTS должен быть больше нуля.")
-    if settings.yandex_captcha_consecutive_threshold <= 0:
-        raise ValueError("APP_YANDEX_CAPTCHA_CONSECUTIVE_THRESHOLD должен быть больше нуля.")
-    if settings.yandex_circuit_breaker_seconds < 0:
-        raise ValueError("APP_YANDEX_CIRCUIT_BREAKER_SECONDS не может быть отрицательным.")
+    if settings.proxy_max_attempts <= 0:
+        raise ValueError("APP_PROXY_MAX_ATTEMPTS должен быть больше нуля.")
+    for proxy_url in settings.proxy_urls:
+        if not _is_valid_proxy_url(proxy_url):
+            raise ValueError(f"APP_PROXY_URLS содержит некорректный proxy URL: {proxy_url}")
     if settings.sheets_api_retry_delay_seconds < 0:
         raise ValueError("APP_SHEETS_API_RETRY_DELAY_SECONDS не может быть отрицательным.")
     if settings.sheets_api_max_attempts <= 0:

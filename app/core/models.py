@@ -21,7 +21,6 @@ class FailureKind(StrEnum):
     NETWORK = "network"
     PARSE = "parse"
     VALIDATION = "validation"
-    CIRCUIT_BREAKER = "circuit_breaker"
     UNKNOWN = "unknown"
 
 

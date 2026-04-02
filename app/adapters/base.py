@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from playwright.sync_api import BrowserContext, Locator, Page, TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
@@ -51,11 +52,21 @@ class ReviewSortConfig:
     )
 
 
+@dataclass(slots=True)
+class ProxyTarget:
+    server: str | None
+    username: str | None
+    password: str | None
+    label: str
+    state_label: str
+
+
 class BaseReviewAdapter(ABC):
     def __init__(self, settings: Settings, platform: PlatformName) -> None:
         self.settings = settings
         self.platform = platform
         self.storage_state_path: Path | None = None
+        self.storage_state_label = "direct"
 
     @property
     @abstractmethod
@@ -105,18 +116,27 @@ class BaseReviewAdapter(ABC):
             return Path(source_url.replace("file://", "", 1)).read_text(encoding="utf-8")
 
         last_error: Exception | None = None
-        for _ in range(2):
+        proxy_targets = self._build_proxy_targets()
+        for attempt_index, proxy_target in enumerate(proxy_targets, start=1):
             with sync_playwright() as playwright:
-                browser = playwright.chromium.launch(
-                    headless=self.settings.playwright_headless,
-                    slow_mo=self.settings.playwright_slow_mo_ms,
-                    args=[
+                launch_kwargs: dict[str, Any] = {
+                    "headless": self.settings.playwright_headless,
+                    "slow_mo": self.settings.playwright_slow_mo_ms,
+                    "args": [
                         "--disable-blink-features=AutomationControlled",
                         "--no-sandbox",
                         "--disable-dev-shm-usage",
                     ],
-                )
+                }
+                if proxy_target.server is not None:
+                    launch_kwargs["proxy"] = {
+                        "server": proxy_target.server,
+                        "username": proxy_target.username,
+                        "password": proxy_target.password,
+                    }
+                browser = playwright.chromium.launch(**launch_kwargs)
                 try:
+                    self.storage_state_label = proxy_target.state_label
                     context = self._create_context(browser)
                     page = context.new_page()
                     self._prepare_page(page)
@@ -158,6 +178,14 @@ class BaseReviewAdapter(ABC):
                     last_error = RuntimeError(f"Истек таймаут открытия страницы: {source_url}")
                 except Exception as error:  # noqa: BLE001
                     last_error = error
+                    if attempt_index < len(proxy_targets):
+                        logger.warning(
+                            "Не удалось открыть %s для %s через %s: %s. Следующая попытка пойдет через другой proxy.",
+                            source_url,
+                            self.platform.value,
+                            proxy_target.label,
+                            error,
+                        )
                 finally:
                     browser.close()
 
@@ -181,7 +209,7 @@ class BaseReviewAdapter(ABC):
     def _create_context(self, browser) -> BrowserContext:
         state_dir = self._runtime_dir("browser-state")
         state_dir.mkdir(parents=True, exist_ok=True)
-        self.storage_state_path = state_dir / f"{self.platform.value}.json"
+        self.storage_state_path = state_dir / f"{self.platform.value}-{self.storage_state_label}.json"
         context_kwargs: dict[str, Any] = {
             "locale": "ru-RU",
             "timezone_id": "Europe/Moscow",
@@ -205,6 +233,33 @@ class BaseReviewAdapter(ABC):
             """
         )
         return context
+
+    def _build_proxy_targets(self) -> list[ProxyTarget]:
+        if not self.settings.proxy_urls:
+            return [
+                ProxyTarget(
+                    server=None,
+                    username=None,
+                    password=None,
+                    label="direct",
+                    state_label="direct",
+                )
+            ]
+
+        targets: list[ProxyTarget] = []
+        limit = min(self.settings.proxy_max_attempts, len(self.settings.proxy_urls))
+        for index, proxy_url in enumerate(self.settings.proxy_urls[:limit], start=1):
+            parsed = urlparse(proxy_url)
+            targets.append(
+                ProxyTarget(
+                    server=f"{parsed.scheme}://{parsed.hostname}:{parsed.port}",
+                    username=parsed.username,
+                    password=parsed.password,
+                    label=f"proxy-{index} ({parsed.hostname}:{parsed.port})",
+                    state_label=f"proxy-{index}",
+                )
+            )
+        return targets
 
     @staticmethod
     def _prepare_page(page: Page) -> None:

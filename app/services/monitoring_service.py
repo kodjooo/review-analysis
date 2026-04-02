@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from logging import Logger
 
 from app.core.config import Settings
@@ -40,8 +40,6 @@ class MonitoringService:
         self.report_builder = report_builder
         self.sheets_service = sheets_service
         self.comparison_service = SnapshotComparisonService(settings.report_stars_threshold)
-        self._yandex_antibot_streak = 0
-        self._yandex_circuit_breaker_until: datetime | None = None
 
     def run_once(
         self,
@@ -128,7 +126,6 @@ class MonitoringService:
         for platform_index, platform in enumerate(platforms):
             snapshot = self._fetch_platform_snapshot(point, platform)
             snapshots[platform] = snapshot
-            self._register_platform_outcome(snapshot)
 
             if snapshot.status == PlatformStatus.ERROR:
                 failed_platforms.append(platform)
@@ -186,17 +183,6 @@ class MonitoringService:
         point: MonitoringPoint,
         platform: PlatformName,
     ) -> PlatformSnapshot:
-        if platform == PlatformName.YANDEX and self._is_yandex_circuit_breaker_open():
-            remaining_seconds = max(
-                0,
-                int((self._yandex_circuit_breaker_until - datetime.now(tz=self.settings.timezone)).total_seconds()),
-            )
-            return self._build_error_snapshot(
-                point=point,
-                platform=platform,
-                message=f"Yandex circuit breaker активен, до повторной попытки осталось {remaining_seconds} сек.",
-                failure_kind=FailureKind.CIRCUIT_BREAKER,
-            )
         return self.review_fetcher.fetch_point_reviews(point, platform)
 
     def _validate_point_snapshots(
@@ -246,37 +232,6 @@ class MonitoringService:
             if platform in snapshots
         ]
         return kinds[0] if kinds else FailureKind.UNKNOWN
-
-    def _register_platform_outcome(self, snapshot: PlatformSnapshot) -> None:
-        if snapshot.platform != PlatformName.YANDEX:
-            return
-        if snapshot.status == PlatformStatus.SUCCESS:
-            self._yandex_antibot_streak = 0
-            if self._yandex_circuit_breaker_until and datetime.now(tz=self.settings.timezone) >= self._yandex_circuit_breaker_until:
-                self._yandex_circuit_breaker_until = None
-            return
-        if snapshot.failure_kind == FailureKind.ANTIBOT:
-            self._yandex_antibot_streak += 1
-            if self._yandex_antibot_streak >= self.settings.yandex_captcha_consecutive_threshold:
-                self._yandex_circuit_breaker_until = datetime.now(tz=self.settings.timezone) + timedelta(
-                    seconds=self.settings.yandex_circuit_breaker_seconds
-                )
-                self.logger.warning(
-                    "Yandex circuit breaker активирован на %s сек. после %s подряд anti-bot ошибок.",
-                    self.settings.yandex_circuit_breaker_seconds,
-                    self._yandex_antibot_streak,
-                )
-        elif snapshot.failure_kind not in {FailureKind.CIRCUIT_BREAKER}:
-            self._yandex_antibot_streak = 0
-
-    def _is_yandex_circuit_breaker_open(self) -> bool:
-        if self._yandex_circuit_breaker_until is None:
-            return False
-        if datetime.now(tz=self.settings.timezone) >= self._yandex_circuit_breaker_until:
-            self._yandex_circuit_breaker_until = None
-            self._yandex_antibot_streak = 0
-            return False
-        return True
 
     def _build_error_snapshot(
         self,

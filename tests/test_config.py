@@ -34,8 +34,8 @@ def clear_runtime_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "APP_RETRY_NETWORK_MAX_ATTEMPTS",
         "APP_RETRY_PARSE_MAX_ATTEMPTS",
         "APP_RETRY_UNKNOWN_MAX_ATTEMPTS",
-        "APP_YANDEX_CAPTCHA_CONSECUTIVE_THRESHOLD",
-        "APP_YANDEX_CIRCUIT_BREAKER_SECONDS",
+        "APP_PROXY_URLS",
+        "APP_PROXY_MAX_ATTEMPTS",
         "APP_SHEETS_API_RETRY_DELAY_SECONDS",
         "APP_SHEETS_API_MAX_ATTEMPTS",
         "APP_SHEETS_FLUSH_EACH_POINT",
@@ -81,8 +81,8 @@ def test_load_settings_reads_points(tmp_path: Path) -> None:
                 "APP_RETRY_NETWORK_MAX_ATTEMPTS=3",
                 "APP_RETRY_PARSE_MAX_ATTEMPTS=1",
                 "APP_RETRY_UNKNOWN_MAX_ATTEMPTS=2",
-                "APP_YANDEX_CAPTCHA_CONSECUTIVE_THRESHOLD=3",
-                "APP_YANDEX_CIRCUIT_BREAKER_SECONDS=1800",
+                "APP_PROXY_URLS=http://proxy1.example.com:8080,http://user:pass@proxy2.example.com:3128",
+                "APP_PROXY_MAX_ATTEMPTS=2",
                 "APP_SHEETS_API_RETRY_DELAY_SECONDS=10",
                 "APP_SHEETS_API_MAX_ATTEMPTS=3",
                 "APP_SHEETS_FLUSH_EACH_POINT=true",
@@ -137,13 +137,48 @@ def test_load_settings_reads_points(tmp_path: Path) -> None:
     assert settings.retry_network_max_attempts == 3
     assert settings.retry_parse_max_attempts == 1
     assert settings.retry_unknown_max_attempts == 2
-    assert settings.yandex_captcha_consecutive_threshold == 3
-    assert settings.yandex_circuit_breaker_seconds == 1800
+    assert settings.proxy_urls == [
+        "http://proxy1.example.com:8080",
+        "http://user:pass@proxy2.example.com:3128",
+    ]
+    assert settings.proxy_max_attempts == 2
     assert settings.sheets_api_retry_delay_seconds == 10
     assert settings.sheets_api_max_attempts == 3
     assert settings.sheets_flush_each_point is True
     assert len(settings.points) == 1
     assert settings.points[0].id == "point-1"
+
+
+def test_load_settings_rejects_invalid_proxy_url(tmp_path: Path) -> None:
+    env_path = tmp_path / ".env"
+    config_path = tmp_path / "points.json"
+    env_path.write_text(
+        "\n".join(
+            [
+                f"APP_CONFIG_PATH={config_path}",
+                "APP_PROXY_URLS=not-a-proxy",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    config_path.write_text(
+        """
+        [
+          {
+            "id": "point-1",
+            "type": "Винотека",
+            "address": "Краснодар",
+            "yandex_url": "https://example.com/yandex",
+            "twogis_url": "https://example.com/2gis",
+            "is_active": true
+          }
+        ]
+        """,
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="APP_PROXY_URLS"):
+        load_settings(env_path=env_path)
 
 
 def test_load_settings_rejects_duplicate_ids(tmp_path: Path) -> None:
