@@ -169,7 +169,7 @@ def build_settings(flush_each_point: bool) -> SimpleNamespace:
         retry_parse_max_attempts=1,
         retry_unknown_max_attempts=2,
         proxy_urls=[],
-        proxy_max_attempts=3,
+        proxy_max_attempts=4,
         sheets_flush_each_point=flush_each_point,
         points=[
             MonitoringPoint(

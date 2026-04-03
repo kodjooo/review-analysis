@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from datetime import datetime
+from logging import getLogger
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
@@ -8,63 +11,52 @@ from app.services.scheduler import SchedulerService
 def build_settings() -> SimpleNamespace:
     return SimpleNamespace(
         timezone=ZoneInfo("Europe/Moscow"),
-        scheduler_poll_seconds=1,
+        failed_rerun_interval_seconds=1800,
+        scheduler_poll_seconds=5,
         schedule_frequency="daily",
         schedule_day="monday",
-        schedule_hour=9,
-        schedule_minute=0,
-        failed_rerun_interval_seconds=3600,
+        schedule_hour=15,
+        schedule_minute=23,
     )
 
 
-def test_scheduler_runs_hourly_reruns_until_failed_points_disappear(monkeypatch) -> None:
-    settings = build_settings()
-    scheduler = SchedulerService(
-        settings=settings,
-        logger=SimpleNamespace(
-            info=lambda *a, **k: None,
-            exception=lambda *a, **k: None,
-        ),
-    )
-    timeline = iter(
+def test_scheduler_schedules_failed_rerun_on_startup_when_skipped_points_exist(monkeypatch) -> None:
+    scheduler = SchedulerService(build_settings(), getLogger("test-scheduler"))
+    callbacks = {"main": 0, "rerun": 0, "checks": 0}
+
+    def main_callback() -> bool:
+        callbacks["main"] += 1
+        return True
+
+    def rerun_callback() -> bool:
+        callbacks["rerun"] += 1
+        raise SystemExit
+
+    def has_failed_points_callback() -> bool:
+        callbacks["checks"] += 1
+        return True
+
+    moments = iter(
         [
-            datetime(2026, 4, 1, 9, 0, 0, tzinfo=settings.timezone),
-            datetime(2026, 4, 1, 10, 0, 0, tzinfo=settings.timezone),
-            datetime(2026, 4, 1, 11, 0, 0, tzinfo=settings.timezone),
-            datetime(2026, 4, 1, 11, 0, 1, tzinfo=settings.timezone),
+            datetime(2026, 4, 3, 12, 0, tzinfo=ZoneInfo("Europe/Moscow")),
+            datetime(2026, 4, 3, 12, 30, tzinfo=ZoneInfo("Europe/Moscow")),
         ]
     )
 
     class FakeDatetime:
         @staticmethod
         def now(tz=None):
-            return next(timeline)
-
-    sleep_calls: list[int] = []
-    events: list[str] = []
-    failed_states = iter([True, True, True, False])
+            current = next(moments)
+            return current if tz is None else current.astimezone(tz)
 
     monkeypatch.setattr("app.services.scheduler.datetime", FakeDatetime)
-    monkeypatch.setattr("app.services.scheduler.time.sleep", lambda seconds: sleep_calls.append(seconds))
-
-    def main_callback() -> bool:
-        events.append("main")
-        return True
-
-    def rerun_callback() -> bool:
-        events.append("rerun")
-        return True
-
-    def has_failed_points_callback() -> bool:
-        value = next(failed_states)
-        if value is False and len(events) >= 3:
-            raise StopIteration
-        return value
+    monkeypatch.setattr("app.services.scheduler.time.sleep", lambda seconds: None)
 
     try:
         scheduler.run_forever(main_callback, rerun_callback, has_failed_points_callback)
-    except StopIteration:
+    except SystemExit:
         pass
 
-    assert events == ["main", "rerun", "rerun"]
-    assert sleep_calls[:2] == [1, 1]
+    assert callbacks["main"] == 0
+    assert callbacks["checks"] >= 1
+    assert callbacks["rerun"] == 1

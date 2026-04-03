@@ -194,3 +194,10 @@ docker compose exec app python -m app.main rerun-failed
 - В рамках одного прохода сервис больше не делает блокирующие retry по отдельной точке и не останавливает обход остальных точек.
 - Для каждой точки сервис по-прежнему пытается собрать обе площадки, но при любой ошибке не коммитит точку в `summary`, а переносит ее в `skipped_points_last_run`.
 - Повторный сбор проблемных точек снова выполняется только через `rerun-failed` по расписанию, с часовым или иным настроенным интервалом `APP_FAILED_RERUN_INTERVAL_SECONDS`.
+
+## 2026-04-03: Proxy rotation and scheduler-driven reruns
+
+- `APP_PROXY_MAX_ATTEMPTS=4` now means: up to 3 configured proxy and then one direct server IP attempt.
+- Playwright rotates both proxy order and browser profile after every successful and failed page load so repeated requests do not reuse the same network/fingerprint sequence.
+- After a restart `scheduler` now checks `skipped_points_last_run` immediately and schedules `rerun-failed` after `APP_FAILED_RERUN_INTERVAL_SECONDS` even if the previous main run finished earlier.
+- `summary` is still updated through merge/upsert during reruns, so successful rows are preserved while skipped points are being retried.

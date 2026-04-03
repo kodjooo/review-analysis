@@ -38,7 +38,7 @@ def build_settings() -> Settings:
         retry_parse_max_attempts=1,
         retry_unknown_max_attempts=2,
         proxy_urls=[],
-        proxy_max_attempts=3,
+        proxy_max_attempts=4,
         sheets_api_retry_delay_seconds=10,
         sheets_api_max_attempts=3,
         sheets_flush_each_point=False,
@@ -371,15 +371,37 @@ def test_adapter_builds_proxy_targets_from_settings() -> None:
     settings.proxy_urls = [
         "http://user:pass@proxy1.example.com:8080",
         "http://proxy2.example.com:3128",
+        "http://proxy3.example.com:8081",
     ]
-    settings.proxy_max_attempts = 2
+    settings.proxy_max_attempts = 4
     adapter = YandexAdapter(settings)
 
     targets = adapter._build_proxy_targets()
 
-    assert len(targets) == 2
+    assert len(targets) == 4
     assert targets[0].server == "http://proxy1.example.com:8080"
     assert targets[0].username == "user"
     assert targets[0].password == "pass"
-    assert targets[0].state_label == "proxy-1"
+    assert targets[0].state_label.startswith("proxy-1-")
     assert targets[1].server == "http://proxy2.example.com:3128"
+    assert targets[2].server == "http://proxy3.example.com:8081"
+    assert targets[3].server is None
+    assert targets[3].label == "direct-server-ip"
+
+
+def test_adapter_rotates_proxy_order_and_browser_profile_after_each_attempt() -> None:
+    settings = build_settings()
+    settings.proxy_urls = [
+        "http://user:pass@proxy1.example.com:8080",
+        "http://proxy2.example.com:3128",
+        "http://proxy3.example.com:8081",
+    ]
+    settings.proxy_max_attempts = 4
+    adapter = YandexAdapter(settings)
+
+    first_targets = adapter._build_proxy_targets()
+    adapter._advance_attempt_rotation()
+    second_targets = adapter._build_proxy_targets()
+
+    assert [target.label for target in first_targets] != [target.label for target in second_targets]
+    assert [target.state_label for target in first_targets] != [target.state_label for target in second_targets]

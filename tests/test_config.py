@@ -82,7 +82,7 @@ def test_load_settings_reads_points(tmp_path: Path) -> None:
                 "APP_RETRY_PARSE_MAX_ATTEMPTS=1",
                 "APP_RETRY_UNKNOWN_MAX_ATTEMPTS=2",
                 "APP_PROXY_URLS=http://proxy1.example.com:8080,http://user:pass@proxy2.example.com:3128",
-                "APP_PROXY_MAX_ATTEMPTS=2",
+                "APP_PROXY_MAX_ATTEMPTS=4",
                 "APP_SHEETS_API_RETRY_DELAY_SECONDS=10",
                 "APP_SHEETS_API_MAX_ATTEMPTS=3",
                 "APP_SHEETS_FLUSH_EACH_POINT=true",
@@ -141,7 +141,7 @@ def test_load_settings_reads_points(tmp_path: Path) -> None:
         "http://proxy1.example.com:8080",
         "http://user:pass@proxy2.example.com:3128",
     ]
-    assert settings.proxy_max_attempts == 2
+    assert settings.proxy_max_attempts == 4
     assert settings.sheets_api_retry_delay_seconds == 10
     assert settings.sheets_api_max_attempts == 3
     assert settings.sheets_flush_each_point is True

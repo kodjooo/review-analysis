@@ -32,6 +32,20 @@ class SchedulerService:
         has_failed_points_callback: Callable[[], bool],
     ) -> None:
         self.logger.info("Запущен планировщик.")
+        initial_failed_points = self._safe_check_failed_points(
+            "Не удалось проверить список пропущенных точек при старте планировщика",
+            has_failed_points_callback,
+        )
+        if initial_failed_points:
+            now = datetime.now(tz=self.settings.timezone)
+            self.next_failed_rerun_at = now + timedelta(
+                seconds=self.settings.failed_rerun_interval_seconds
+            )
+            self.logger.info(
+                "При старте найдены пропущенные точки. Повторный проход запланирован на %s.",
+                self.next_failed_rerun_at.strftime("%Y-%m-%d %H:%M:%S"),
+            )
+
         while True:
             now = datetime.now(tz=self.settings.timezone)
 
@@ -78,7 +92,7 @@ class SchedulerService:
                         )
                     else:
                         self.logger.info(
-                            "Пропущенные точки успешно добраны, hourly rerun остановлен."
+                            "Пропущенные точки успешно добраны, автоматический rerun остановлен."
                         )
                         self.next_failed_rerun_at = None
                 else:

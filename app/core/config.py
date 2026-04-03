@@ -193,7 +193,7 @@ def load_settings(env_path: Path, config_path: Path | None = None) -> Settings:
             _read_env("APP_RETRY_UNKNOWN_MAX_ATTEMPTS", "2", env_values)
         ),
         proxy_urls=_read_list("APP_PROXY_URLS", env_values),
-        proxy_max_attempts=int(_read_env("APP_PROXY_MAX_ATTEMPTS", "3", env_values)),
+        proxy_max_attempts=int(_read_env("APP_PROXY_MAX_ATTEMPTS", "4", env_values)),
         sheets_api_retry_delay_seconds=int(
             _read_env("APP_SHEETS_API_RETRY_DELAY_SECONDS", "10", env_values)
         ),

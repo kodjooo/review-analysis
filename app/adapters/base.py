@@ -59,14 +59,65 @@ class ProxyTarget:
     password: str | None
     label: str
     state_label: str
+    user_agent: str
+    viewport: dict[str, int]
+    locale: str
+    timezone_id: str
 
 
 class BaseReviewAdapter(ABC):
+    BROWSER_PROFILES: tuple[dict[str, Any], ...] = (
+        {
+            "label": "desktop-chrome-ru",
+            "user_agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            ),
+            "viewport": {"width": 1440, "height": 900},
+            "locale": "ru-RU",
+            "timezone_id": "Europe/Moscow",
+        },
+        {
+            "label": "desktop-edge-ru",
+            "user_agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/123.0.0.0 Safari/537.36 Edg/123.0.0.0"
+            ),
+            "viewport": {"width": 1536, "height": 864},
+            "locale": "ru-RU",
+            "timezone_id": "Europe/Moscow",
+        },
+        {
+            "label": "desktop-chrome-alt",
+            "user_agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/122.0.0.0 Safari/537.36"
+            ),
+            "viewport": {"width": 1366, "height": 768},
+            "locale": "ru-RU",
+            "timezone_id": "Europe/Moscow",
+        },
+        {
+            "label": "desktop-firefox-ru",
+            "user_agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) "
+                "Gecko/20100101 Firefox/124.0"
+            ),
+            "viewport": {"width": 1600, "height": 900},
+            "locale": "ru-RU",
+            "timezone_id": "Europe/Moscow",
+        },
+    )
+
     def __init__(self, settings: Settings, platform: PlatformName) -> None:
         self.settings = settings
         self.platform = platform
         self.storage_state_path: Path | None = None
         self.storage_state_label = "direct"
+        self._attempt_rotation_seed = 0
 
     @property
     @abstractmethod
@@ -117,77 +168,81 @@ class BaseReviewAdapter(ABC):
 
         last_error: Exception | None = None
         proxy_targets = self._build_proxy_targets()
-        for attempt_index, proxy_target in enumerate(proxy_targets, start=1):
-            with sync_playwright() as playwright:
-                launch_kwargs: dict[str, Any] = {
-                    "headless": self.settings.playwright_headless,
-                    "slow_mo": self.settings.playwright_slow_mo_ms,
-                    "args": [
-                        "--disable-blink-features=AutomationControlled",
-                        "--no-sandbox",
-                        "--disable-dev-shm-usage",
-                    ],
-                }
-                if proxy_target.server is not None:
-                    launch_kwargs["proxy"] = {
-                        "server": proxy_target.server,
-                        "username": proxy_target.username,
-                        "password": proxy_target.password,
+        try:
+            for attempt_index, proxy_target in enumerate(proxy_targets, start=1):
+                with sync_playwright() as playwright:
+                    launch_kwargs: dict[str, Any] = {
+                        "headless": self.settings.playwright_headless,
+                        "slow_mo": self.settings.playwright_slow_mo_ms,
+                        "args": [
+                            "--disable-blink-features=AutomationControlled",
+                            "--no-sandbox",
+                            "--disable-dev-shm-usage",
+                        ],
                     }
-                browser = playwright.chromium.launch(**launch_kwargs)
-                try:
-                    self.storage_state_label = proxy_target.state_label
-                    context = self._create_context(browser)
-                    page = context.new_page()
-                    self._prepare_page(page)
-                    page.goto(
-                        source_url,
-                        wait_until="domcontentloaded",
-                        timeout=self.settings.page_timeout_seconds * 1000,
-                    )
-                    self._wait_for_interactive_page(page)
-                    self._simulate_human_behavior(page)
+                    if proxy_target.server is not None:
+                        launch_kwargs["proxy"] = {
+                            "server": proxy_target.server,
+                            "username": proxy_target.username,
+                            "password": proxy_target.password,
+                        }
 
-                    html = page.content()
-                    title = page.title()
-                    current_url = page.url
-                    self._save_debug_html(html)
-                    self._save_debug_screenshot(page)
-
-                    page_state, target_hits, anti_bot_hits = inspect_page_state(
-                        title=title,
-                        url=current_url,
-                        html=html,
-                        expectation=self.page_expectation,
-                    )
-                    if page_state == "antibot":
-                        raise AntiBotDetectedError(
-                            "Обнаружена антибот-страница. "
-                            f"target={target_hits}; antibot={anti_bot_hits}; url={current_url}"
-                        )
-                    if page_state == "unknown":
-                        raise RuntimeError(
-                            "Не удалось подтвердить целевую страницу по ожидаемым селекторам. "
-                            f"target={target_hits}; antibot={anti_bot_hits}; url={current_url}"
-                        )
-
-                    self._persist_context_state(context)
-                    context.close()
-                    return html
-                except PlaywrightTimeoutError:
-                    last_error = RuntimeError(f"Истек таймаут открытия страницы: {source_url}")
-                except Exception as error:  # noqa: BLE001
-                    last_error = error
-                    if attempt_index < len(proxy_targets):
-                        logger.warning(
-                            "Не удалось открыть %s для %s через %s: %s. Следующая попытка пойдет через другой proxy.",
+                    browser = playwright.chromium.launch(**launch_kwargs)
+                    try:
+                        self.storage_state_label = proxy_target.state_label
+                        context = self._create_context(browser)
+                        page = context.new_page()
+                        self._prepare_page(page)
+                        page.goto(
                             source_url,
-                            self.platform.value,
-                            proxy_target.label,
-                            error,
+                            wait_until="domcontentloaded",
+                            timeout=self.settings.page_timeout_seconds * 1000,
                         )
-                finally:
-                    browser.close()
+                        self._wait_for_interactive_page(page)
+                        self._simulate_human_behavior(page)
+
+                        html = page.content()
+                        title = page.title()
+                        current_url = page.url
+                        self._save_debug_html(html)
+                        self._save_debug_screenshot(page)
+
+                        page_state, target_hits, anti_bot_hits = inspect_page_state(
+                            title=title,
+                            url=current_url,
+                            html=html,
+                            expectation=self.page_expectation,
+                        )
+                        if page_state == "antibot":
+                            raise AntiBotDetectedError(
+                                "Обнаружена антибот-страница. "
+                                f"target={target_hits}; antibot={anti_bot_hits}; url={current_url}"
+                            )
+                        if page_state == "unknown":
+                            raise RuntimeError(
+                                "Не удалось подтвердить целевую страницу по ожидаемым селекторам. "
+                                f"target={target_hits}; antibot={anti_bot_hits}; url={current_url}"
+                            )
+
+                        self._persist_context_state(context)
+                        context.close()
+                        return html
+                    except PlaywrightTimeoutError:
+                        last_error = RuntimeError(f"Истек таймаут открытия страницы: {source_url}")
+                    except Exception as error:  # noqa: BLE001
+                        last_error = error
+                        if attempt_index < len(proxy_targets):
+                            logger.warning(
+                                "Не удалось открыть %s для %s через %s: %s. Следующая попытка пойдет через другой proxy.",
+                                source_url,
+                                self.platform.value,
+                                proxy_target.label,
+                                error,
+                            )
+                    finally:
+                        browser.close()
+        finally:
+            self._advance_attempt_rotation()
 
         if last_error is None:
             raise RuntimeError(f"Не удалось открыть страницу: {source_url}")
@@ -210,15 +265,12 @@ class BaseReviewAdapter(ABC):
         state_dir = self._runtime_dir("browser-state")
         state_dir.mkdir(parents=True, exist_ok=True)
         self.storage_state_path = state_dir / f"{self.platform.value}-{self.storage_state_label}.json"
+        profile = self._resolve_browser_profile(self.storage_state_label)
         context_kwargs: dict[str, Any] = {
-            "locale": "ru-RU",
-            "timezone_id": "Europe/Moscow",
-            "viewport": {"width": 1440, "height": 900},
-            "user_agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/124.0.0.0 Safari/537.36"
-            ),
+            "locale": profile["locale"],
+            "timezone_id": profile["timezone_id"],
+            "viewport": profile["viewport"],
+            "user_agent": profile["user_agent"],
         }
         if self.storage_state_path.exists():
             context_kwargs["storage_state"] = str(self.storage_state_path)
@@ -235,31 +287,64 @@ class BaseReviewAdapter(ABC):
         return context
 
     def _build_proxy_targets(self) -> list[ProxyTarget]:
-        if not self.settings.proxy_urls:
-            return [
-                ProxyTarget(
-                    server=None,
-                    username=None,
-                    password=None,
-                    label="direct",
-                    state_label="direct",
-                )
-            ]
+        base_targets: list[dict[str, str | None]] = []
+        for index, proxy_url in enumerate(self.settings.proxy_urls, start=1):
+            parsed = urlparse(proxy_url)
+            base_targets.append(
+                {
+                    "server": f"{parsed.scheme}://{parsed.hostname}:{parsed.port}",
+                    "username": parsed.username,
+                    "password": parsed.password,
+                    "label": f"proxy-{index} ({parsed.hostname}:{parsed.port})",
+                    "state_label": f"proxy-{index}",
+                }
+            )
+        base_targets.append(
+            {
+                "server": None,
+                "username": None,
+                "password": None,
+                "label": "direct-server-ip",
+                "state_label": "direct",
+            }
+        )
+
+        limit = min(self.settings.proxy_max_attempts, len(base_targets))
+        rotation = self._attempt_rotation_seed % len(base_targets)
+        ordered_targets = base_targets[rotation:] + base_targets[:rotation]
+        profile_rotation = self._attempt_rotation_seed % len(self.BROWSER_PROFILES)
+        ordered_profiles = list(self.BROWSER_PROFILES[profile_rotation:]) + list(
+            self.BROWSER_PROFILES[:profile_rotation]
+        )
 
         targets: list[ProxyTarget] = []
-        limit = min(self.settings.proxy_max_attempts, len(self.settings.proxy_urls))
-        for index, proxy_url in enumerate(self.settings.proxy_urls[:limit], start=1):
-            parsed = urlparse(proxy_url)
+        for index, target in enumerate(ordered_targets[:limit]):
+            profile = ordered_profiles[index % len(ordered_profiles)]
             targets.append(
                 ProxyTarget(
-                    server=f"{parsed.scheme}://{parsed.hostname}:{parsed.port}",
-                    username=parsed.username,
-                    password=parsed.password,
-                    label=f"proxy-{index} ({parsed.hostname}:{parsed.port})",
-                    state_label=f"proxy-{index}",
+                    server=target["server"],
+                    username=target["username"],
+                    password=target["password"],
+                    label=str(target["label"]),
+                    state_label=f"{target['state_label']}-{profile['label']}",
+                    user_agent=str(profile["user_agent"]),
+                    viewport=dict(profile["viewport"]),
+                    locale=str(profile["locale"]),
+                    timezone_id=str(profile["timezone_id"]),
                 )
             )
         return targets
+
+    def _advance_attempt_rotation(self) -> None:
+        self._attempt_rotation_seed = (self._attempt_rotation_seed + 1) % (
+            max(len(self.settings.proxy_urls) + 1, len(self.BROWSER_PROFILES))
+        )
+
+    def _resolve_browser_profile(self, state_label: str) -> dict[str, Any]:
+        for profile in self.BROWSER_PROFILES:
+            if profile["label"] in state_label:
+                return profile
+        return self.BROWSER_PROFILES[0]
 
     @staticmethod
     def _prepare_page(page: Page) -> None:
@@ -300,7 +385,11 @@ class BaseReviewAdapter(ABC):
     def _try_click_locator(self, locator: Locator, description: str) -> bool:
         try:
             if locator.count() == 0 or not locator.is_visible():
-                logger.info("Пропускаем %s для %s: элемент не найден или не видим.", description, self.platform.value)
+                logger.info(
+                    "Пропускаем %s для %s: элемент не найден или не видим.",
+                    description,
+                    self.platform.value,
+                )
                 return False
             locator.scroll_into_view_if_needed(timeout=1000)
             obstruction = self._describe_obstruction(locator)
