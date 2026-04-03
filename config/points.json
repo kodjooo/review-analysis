@@ -155,7 +155,7 @@
     {
         "id":  "18",
         "name":  "Точка 18",
-        "type":  "Винотека Мильстрим",
+        "type":  "Мильстрим",
         "address":  "Белгород, ул. Корочанская, 416",
         "yandex_url":  "https://yandex.ru/maps/org/milstrim/58746868816/reviews/",
         "twogis_url":  "https://2gis.ru/belgorod/firm/70000001032331628/tab/reviews",
@@ -402,7 +402,7 @@
         "address":  "Армавир, ул. Новороссийская, 90Б",
         "yandex_url":  "https://yandex.ru/maps/org/milstrim/76827259169/reviews/",
         "twogis_url":  "https://2gis.ru/armawir/firm/70000001027892121/tab/reviews",
-        "is_active":  true
+        "is_active":  false
     },
     {
         "id":  "46",
@@ -434,7 +434,7 @@
     {
         "id":  "49",
         "name":  "Точка 49",
-        "type":  "Винотека Мильстрим",
+        "type":  "Мильстрим",
         "address":  "Курск, пр-кт Ленинского Комсомола, 1В",
         "yandex_url":  "https://yandex.ru/maps/org/milstrim/51276334310/reviews/",
         "twogis_url":  "https://2gis.ru/kursk/firm/70000001043564058/tab/reviews",
